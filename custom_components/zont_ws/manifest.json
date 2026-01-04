@@ -1,0 +1,11 @@
+{
+  "domain": "zont_ws",
+  "name": "ZONT Local",
+  "documentation": "https://github.com/mihvs/zont_ws",
+  "codeowners": ["@mihvs"],
+  "config_flow": true,
+  "integration_type": "hub",
+  "dependencies": ["http", "zeroconf"],
+  "requirements": [],
+  "version": "v2026.1.0"
+}
