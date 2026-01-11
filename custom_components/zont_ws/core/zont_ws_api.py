@@ -4,29 +4,30 @@ from typing import Any
 
 import aiohttp
 
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from ..const import (
     WS_TIMEOUT_REQUEST, HEARTBEAT, WS_KEY_USER, WS_KEY_AUTH,
     WS_KEY_REQUEST_IDS, WS_KEY_IDS, WS_KEY_ID, WS_KEY_REQUEST_STATE,
-    WS_KEY_CMD, WS_KEY_SERVICE_CMD, WS_KEY_SERVICE_CMD_RESULT
+    WS_KEY_CMD, WS_KEY_SERVICE_CMD, WS_KEY_SERVICE_CMD_RESULT, WS_KEY_PASS
 )
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from .exceptions import ZontAuthError, ZontWsError, ZontUrlError
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class ZontWsError(Exception):
-    """Base ZONT WS error."""
-
-
-class ZontAuthError(ZontWsError):
-    """Authentication failed."""
-
-
 class ZontWsApi:
-    def __init__(self, hass, host: str, user: str, password: str) -> None:
+    def __init__(self,
+            hass: HomeAssistant,
+            name: str,
+            url: str,
+            login: str,
+            password: str) -> None:
         self._hass = hass
-        self._host = host
-        self._user = user
+        self.name = name
+        self._url = url
+        self._host = self.get_ip(url)
+        self._login = login
         self._password = password
 
         self._session = async_get_clientsession(hass)
@@ -34,6 +35,16 @@ class ZontWsApi:
 
         self._lock = asyncio.Lock()
         self._connected = False
+
+
+    @staticmethod
+    def get_ip(url: str) -> str:
+        try:
+            ip = url.split('/')[2]
+        except Exception as err:
+            _LOGGER.error(f'The URL is incorrect.')
+            raise ZontUrlError
+        return ip
 
     async def connect(self) -> None:
         """Open websocket and authorize."""
@@ -44,15 +55,16 @@ class ZontWsApi:
 
         try:
             self._ws = await self._session.ws_connect(
-                url= self._host,
+                url= self._url,
+                ssl=False,
                 heartbeat=HEARTBEAT,
                 timeout=WS_TIMEOUT_REQUEST,
             )
 
             await self._ws.send_json(
                 {
-                    WS_KEY_USER: self._user,
-                    WS_KEY_AUTH: self._password,
+                    WS_KEY_USER: self._login,
+                    WS_KEY_PASS: self._password,
                 }
             )
 
@@ -62,6 +74,7 @@ class ZontWsApi:
                 raise ZontWsError(f'Invalid auth response. Host: {self._host}')
 
             data = msg.json()
+            _LOGGER.debug(f'message from host: {self._host} -> {data}')
             if data.get(WS_KEY_AUTH) != 200:
                 raise ZontAuthError(f'ZONT authentication failed! '
                                     f'Host: {self._host}')
@@ -81,7 +94,8 @@ class ZontWsApi:
             _LOGGER.debug(f'Closing ZONT WS. Host: {self._host}')
             try:
                 await self._ws.close()
-            except Exception:
+            except Exception as err:
+                _LOGGER.warning(f'Failed closing ZONT WS')
                 pass
 
         self._ws = None

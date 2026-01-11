@@ -1,6 +1,14 @@
 DOMAIN = 'zont_ws'
 MANUFACTURER = 'MicroLine'
+CONFIGURATION_URL = 'https://my.zont.online/'
 
+ENTRIES = 'entries'
+
+LOGIN_DEFAULT = 'admin'
+PASSWORD_DEFAULT = 'admin'
+URL_DEFAULT = 'https://192.168.1.40/ws'
+
+TIME_UPDATE = 15
 WS_TIMEOUT_REQUEST = 10
 HEARTBEAT = 60
 
