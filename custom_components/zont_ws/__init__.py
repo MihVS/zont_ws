@@ -11,7 +11,8 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator, UpdateFailed
 )
 from .const import (
-    DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL
+    DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL,
+    CURRENT_ENTITY_IDS,
 )
 from .core.zont_data import ZontData
 
@@ -33,27 +34,6 @@ _LOGGER = logging.getLogger(__name__)
 #     for entity_id in remove_entities:
 #         entity_registry.async_remove(entity_id)
 #         _LOGGER.info(f'Outdated entity deleted {entity_id}')
-#
-#
-# async def remove_devices(
-#         hass: HomeAssistant,
-#         config_entry: ConfigEntry,
-#         selected_devices: list | None):
-#     """Удаляет неактуальные устройства."""
-#     _LOGGER.debug(f'Try remove no selected devices. '
-#                   f'Current devices: {selected_devices}')
-#     device_reg = dr.async_get(hass)
-#     all_devices = dr.async_entries_for_config_entry(device_reg,
-#                                                     config_entry.entry_id)
-#     if not selected_devices:
-#         _LOGGER.debug(f'There are no selected devices: {selected_devices}')
-#         return
-#     for device in all_devices:
-#         _LOGGER.debug(f'device identifiers: {device.identifiers}')
-#         device_id = str(list(device.identifiers)[0][1])
-#         if not device_id in selected_devices:
-#             device_reg.async_remove_device(device.id)
-#             _LOGGER.info(f"Device is removed: {device.name} ({device_id})")
 
 
 async def async_setup_entry(
@@ -68,15 +48,13 @@ async def async_setup_entry(
     login = config_entry.data.get('login')
     password = config_entry.data.get('password')
     zont_ws_api = ZontWsApi(hass, name, url, login, password)
-    _LOGGER.debug(f'selected devices: {selected_devices}')
 
-    await remove_devices(hass, config_entry, selected_devices)
+    coordinator = ZontCoordinator(hass, zont_ws_api)
 
-    await zont.init_old_data()
-    coordinator = ZontCoordinator(hass, zont)
+    await coordinator.init_device()
+
     await coordinator.async_config_entry_first_refresh()
     _LOGGER.debug(f'config entry data: {config_entry.data}')
-
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN].setdefault(ENTRIES, {})
@@ -88,8 +66,8 @@ async def async_setup_entry(
         config_entry, PLATFORMS
     )
     current_entries_id = hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id]
-    remove_entity(hass, current_entries_id, config_entry)
-    _LOGGER.debug(f'The unique ID of the current account entities {zont.mail}:'
+    # remove_entity(hass, current_entries_id, config_entry)
+    _LOGGER.debug(f'The unique ID of the current device entities {name}:'
                   f' {current_entries_id}')
     _LOGGER.debug(f'Number of relevant entities: '
                   f'{len(current_entries_id)}')
@@ -153,35 +131,29 @@ class ZontCoordinator(DataUpdateCoordinator):
 
     async def update_ids(self):
         ids = await self.zont_ws_api.get_ids()
-        _LOGGER.debug(f'Updated ids: {ids}')
-        self.data.ids = ids
+        actual_ids = []
+        _LOGGER.debug(f'All updated ids: {ids}. Count: {len(ids)}')
+        for id in ids:
+            state_control = await self.zont_ws_api.get_state(id)
+            if not 'failed' in state_control:
+                actual_ids.append(id)
+        _LOGGER.debug(f'Actual ids: {actual_ids}. Count: {len(actual_ids)}')
+        self.data.ids = actual_ids
+
+    async def init_device(self):
+        _LOGGER.debug(f'Controller is initializing... '
+                      f'(name: {self.zont_ws_api.name})')
+        try:
+            await self.update_device_info()
+            await self.update_ids()
+            _LOGGER.debug(f'Controller is initializing... '
+                          f'(name: {self.zont_ws_api.name})')
+        except Exception as err:
+            _LOGGER.error(f'Initializing failed.'
+                          f'(name: {self.zont_ws_api.name}). error: {err}')
 
     async def _async_update_data(self):
         """Обновление данных API zont"""
-        try:
-            async with async_timeout.timeout(TIME_OUT_UPDATE_DATA):
-                await self.zont.get_update()
-                self._count_connect = 0
-                return self.zont
-        except Exception as err:
-            if self._count_connect < COUNTER_CONNECT:
-                self._count_connect += 1
-                _LOGGER.warning(err)
-                _LOGGER.warning(
-                    f'Неудачная попытка обновления данных ZONT. '
-                    f'Осталось попыток: {COUNTER_CONNECT - self._count_connect}'
-                )
-                return self.zont
-            else:
-                raise UpdateFailed(f"Ошибка соединения с API zont: {err}")
-
-
-async def async_migrate_entry(hass, config_entry):
-    """Миграция с версии 2 на 3."""
-    if config_entry.version == 2:
-        hass.config_entries.async_update_entry(
-            config_entry,
-            version=3
-        )
-        _LOGGER.info('Миграция с версии 2 на 3 выполнена (нулевая миграция)')
-    return True
+        for id in self.data.ids:
+            state_control = await self.zont_ws_api.get_state(id)
+            self.data.controls.update({id: state_control})

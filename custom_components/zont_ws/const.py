@@ -3,6 +3,7 @@ MANUFACTURER = 'MicroLine'
 CONFIGURATION_URL = 'https://my.zont.online/'
 
 ENTRIES = 'entries'
+CURRENT_ENTITY_IDS = 'current_entity_ids'
 
 LOGIN_DEFAULT = 'admin'
 PASSWORD_DEFAULT = 'admin'
@@ -44,11 +45,11 @@ ZONT_TYPE_NTC_TEMP_SENSOR = 27
 ZONT_TYPE_ANY = 255
 
 PLATFORMS = [
-    'sensor',
-    'binary_sensor',
-    'switch',
-    'button',
-    'climate',
-    'alarm_control_panel',
-    'device_tracker'
+    # 'sensor',
+    # 'binary_sensor',
+    # 'switch',
+    # 'button',
+    # 'climate',
+    # 'alarm_control_panel',
+    # 'device_tracker'
 ]
