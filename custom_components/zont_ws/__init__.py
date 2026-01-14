@@ -52,8 +52,8 @@ async def async_setup_entry(
     coordinator = ZontCoordinator(hass, zont_ws_api)
 
     await coordinator.init_device()
-
     await coordinator.async_config_entry_first_refresh()
+
     _LOGGER.debug(f'config entry data: {config_entry.data}')
 
     hass.data.setdefault(DOMAIN, {})
@@ -107,16 +107,16 @@ class ZontCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=TIME_UPDATE),
         )
         self.zont_ws_api: ZontWsApi = zont_ws_api
-        self.data: ZontData = ZontData()
+        self.zont_data: ZontData = ZontData()
 
     def get_devices_info(self):
         device_info = DeviceInfo(**{
             "identifiers": {(DOMAIN, self.zont_ws_api.name)},
             "name": self.zont_ws_api.name,
-            "sw_version":self.data.device_info.software,
-            "hw_version": self.data.device_info.hardware,
+            "sw_version":self.zont_data.device_info.software,
+            "hw_version": self.zont_data.device_info.hardware,
             "configuration_url": CONFIGURATION_URL,
-            "model": self.data.device_info.model,
+            "model": self.zont_data.device_info.model,
             "manufacturer": MANUFACTURER,
         })
         return device_info
@@ -125,9 +125,9 @@ class ZontCoordinator(DataUpdateCoordinator):
         text = await self.zont_ws_api.send_system_command('#S7?')
         _LOGGER.debug(f'updated device info: {text}')
         if text:
-            (self.data.device_info.model,
-             self.data.device_info.software,
-             self.data.device_info.hardware) = text.split(':')[1].split(' ')
+            (self.zont_data.device_info.model,
+             self.zont_data.device_info.software,
+             self.zont_data.device_info.hardware) = text.split(':')[1].split(' ')
 
     async def update_ids(self):
         ids = await self.zont_ws_api.get_ids()
@@ -138,7 +138,7 @@ class ZontCoordinator(DataUpdateCoordinator):
             if not 'failed' in state_control:
                 actual_ids.append(id)
         _LOGGER.debug(f'Actual ids: {actual_ids}. Count: {len(actual_ids)}')
-        self.data.ids = actual_ids
+        self.zont_data.ids = actual_ids
 
     async def init_device(self):
         _LOGGER.debug(f'Controller is initializing... '
@@ -154,6 +154,9 @@ class ZontCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Обновление данных API zont"""
-        for id in self.data.ids:
+        _LOGGER.warning(f'Start update data.')
+        for id in self.zont_data.ids:
             state_control = await self.zont_ws_api.get_state(id)
-            self.data.controls.update({id: state_control})
+            self.zont_data.controls.update({id: state_control})
+        _LOGGER.warning(f'Finish update data.')
+        _LOGGER.debug(f'data: {self.zont_data.controls}')

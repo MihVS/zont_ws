@@ -133,12 +133,12 @@ class ZontWsApi:
                 await self.close()
                 raise
 
-    async def get_ids(self, obj_type: int = 255) -> list[int]:
+    async def get_ids(self, obj_type: str = '255') -> list[str]:
         """Request list of object IDs."""
         data = await self.request({WS_KEY_REQUEST_IDS: obj_type})
         return data.get(WS_KEY_IDS, [])
 
-    async def get_state(self, obj_id: int) -> dict[str, Any]:
+    async def get_state(self, obj_id: str) -> dict[str, Any]:
         """Request object state."""
         return await self.request(
             {
