@@ -9,7 +9,7 @@ LOGIN_DEFAULT = 'admin'
 PASSWORD_DEFAULT = 'admin'
 URL_DEFAULT = 'https://192.168.1.40/ws'
 
-TIME_UPDATE = 15
+TIME_UPDATE = 60
 WS_TIMEOUT_REQUEST = 10
 HEARTBEAT = 60
 
@@ -22,6 +22,10 @@ WS_KEY_REQUEST_IDS = 'req_ids'
 WS_KEY_IDS = 'ids'
 WS_KEY_ID = 'id'
 WS_KEY_RESPONSE_ID = 'Id'
+WS_KEY_MODE_ID = 'm_id'
+WS_KEY_MODE = 'm'
+WS_KEY_CURRENT_TEMP = 'c'
+WS_KEY_TARGET_TEMP = 's'
 WS_KEY_REQUEST_STATE = 'req_state'
 WS_KEY_TYPE = 'type'
 WS_KEY_NAME = 'name'
@@ -47,6 +51,7 @@ class ZontType:
     MIXER = 15
     HEATING_CIRCUIT = 16
     PUMP = 17
+    MODE = 20
     NTC_TEMP_SENSOR = 27
     ANY = 255
 
@@ -60,3 +65,13 @@ PLATFORMS = [
     # 'alarm_control_panel',
     # 'device_tracker'
 ]
+
+MIN_TEMP_AIR = 5
+MAX_TEMP_AIR = 35
+MIN_TEMP_GVS = 25
+MAX_TEMP_GVS = 75
+MIN_TEMP_FLOOR = 15
+MAX_TEMP_FLOOR = 45
+MATCHES_GVS = ('гвс', 'горяч', 'вода', 'бкн', 'гидро', 'подача')
+MATCHES_FLOOR = ('пол', 'тёплый',)
+MODE_BOILER_NAMES = ['газ',  'электри', 'котёл', 'котел', 'котл']

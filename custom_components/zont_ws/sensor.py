@@ -26,7 +26,6 @@ async def async_setup_entry(
     entry_id = config_entry.entry_id
 
     coordinator: ZontCoordinator = hass.data[DOMAIN][ENTRIES][entry_id]
-    print(f'!!!!!!!!!!!!!!!!!!!!!{coordinator.zont_data}')
 
     for control_id, control_state  in coordinator.zont_data.controls.items():
         sens = []
@@ -43,7 +42,7 @@ async def async_setup_entry(
                 sensor.unique_id)
         if sens:
             async_add_entities(sens)
-            _LOGGER.debug(f'Добавлены сенсоры: {sens}')
+            _LOGGER.debug(f'Added sensors: {sens}')
 
 
 class ZontSensorTemperature(CoordinatorEntity, SensorEntity):
@@ -93,22 +92,3 @@ class ZontSensorTemperature(CoordinatorEntity, SensorEntity):
             return (f'<Sensor entity '
                     f'{self._coord.zont_data.device_info.model}-{self.name}>')
         return super().__repr__()
-
-    # @callback
-    # def _handle_coordinator_update(self) -> None:
-    #     """Обработка обновлённых данных от координатора"""
-    #
-    #     sensor = self.coordinator.zont.get_sensor(
-    #         self._device.id,
-    #         self._sensor.id
-    #     )
-    #     if sensor is None:
-    #         _LOGGER.error(f'Сенсор по id={self._sensor.id} не найден')
-    #         return
-    #     if sensor.value != self._sensor.value:
-    #         _LOGGER.debug(
-    #             f'Сенсор "{self._device.name}_{self._sensor.name}" обновился '
-    #             f'с {self._sensor.value} на {sensor.value}')
-    #     self._sensor.value = validate_value_sensor(
-    #         sensor.value, self._sensor.value)
-    #     self.async_write_ha_state()

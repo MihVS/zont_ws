@@ -25,17 +25,16 @@ class ZontWsApi:
             password: str) -> None:
         self._hass = hass
         self.name = name
-        self._url = url
+        self.url = url
         self._host = self.get_ip(url)
         self._login = login
         self._password = password
-
         self._session = async_get_clientsession(hass)
         self._ws: aiohttp.ClientWebSocketResponse | None = None
-
         self._lock = asyncio.Lock()
         self._connected = False
-
+        self._listener_task = None
+        self._callbacks = []
 
     @staticmethod
     def get_ip(url: str) -> str:
@@ -55,7 +54,7 @@ class ZontWsApi:
 
         try:
             self._ws = await self._session.ws_connect(
-                url= self._url,
+                url= self.url,
                 ssl=False,
                 heartbeat=HEARTBEAT,
                 timeout=WS_TIMEOUT_REQUEST,
@@ -82,22 +81,46 @@ class ZontWsApi:
             self._connected = True
             _LOGGER.debug(f'ZONT WS connected and authorized. '
                           f'Host: {self._host}')
+            self._listener_task = asyncio.create_task(self._listen())
 
         except Exception as err:
             await self.close()
             raise ZontWsError(f'WS connect failed: {err}. '
                               f'Host: {self._host}') from err
 
-    async def close(self) -> None:
-        """Close websocket."""
-        if self._ws is not None:
-            _LOGGER.debug(f'Closing ZONT WS. Host: {self._host}')
-            try:
-                await self._ws.close()
-            except Exception as err:
-                _LOGGER.warning(f'Failed closing ZONT WS')
-                pass
+    async def _listen(self):
+        _LOGGER.debug('WS listener started')
+        try:
+            async for msg in self._ws:
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    data = msg.json()
+                    for cb in self._callbacks:
+                        cb(data)
 
+                elif msg.type in (
+                    aiohttp.WSMsgType.ERROR,
+                    aiohttp.WSMsgType.CLOSED,
+                ):
+                    break
+
+        except Exception as err:
+            _LOGGER.error(f'WS listen error: {err}')
+
+        finally:
+            _LOGGER.warning('WS listener stopped')
+            self._connected = False
+
+    def add_listener(self, callback):
+        self._callbacks.append(callback)
+
+    async def close(self):
+        if self._listener_task:
+            self._listener_task.cancel()
+        if self._ws:
+            _LOGGER.debug(f'Closing ZONT WS. Host: {self._host}')
+            await self._ws.close()
+        self._connected = False
+        _LOGGER.debug(f'WS closed. Host: {self._host}')
         self._ws = None
         self._connected = False
 
@@ -105,40 +128,23 @@ class ZontWsApi:
         """Send request and wait for response."""
         async with self._lock:
             if not self._connected:
-                await self.connect()
+                _LOGGER.error(f'WS not connected. Host: {self._host}')
+                raise ZontWsError('WS not connected')
+            _LOGGER.debug(f'Host: {self._host}. ZONT WS → {payload}')
+            await self._ws.send_json(payload)
+            msg = await self._ws.receive(timeout=10)
+            if msg.type != aiohttp.WSMsgType.TEXT:
+                raise ZontWsError('Invalid response')
+            data = msg.json()
+            _LOGGER.debug(f'Host: {self._host}. ZONT WS ← {data}')
+            return data
 
-            try:
-                _LOGGER.debug(f'ZONT WS → {payload}')
-                await self._ws.send_json(payload)
-
-                msg = await self._ws.receive(timeout=15)
-
-                if msg.type == aiohttp.WSMsgType.TEXT:
-                    data = msg.json()
-                    _LOGGER.debug(f'ZONT WS ← {data}')
-                    return data
-
-                if msg.type in (
-                    aiohttp.WSMsgType.CLOSE,
-                    aiohttp.WSMsgType.ERROR,
-                ):
-                    raise ZontWsError(f'WebSocket closed. Host: {self._host}')
-
-                raise ZontWsError(f'Unexpected WS msg: {msg.type}. '
-                                  f'Host: {self._host}')
-
-            except Exception as err:
-                _LOGGER.warning(f'ZONT WS error (host: {self._host}), '
-                                f'reconnect needed: {err}')
-                await self.close()
-                raise
-
-    async def get_ids(self, obj_type: str = '255') -> list[str]:
+    async def get_ids(self, obj_type: str = 255) -> list[int]:
         """Request list of object IDs."""
         data = await self.request({WS_KEY_REQUEST_IDS: obj_type})
         return data.get(WS_KEY_IDS, [])
 
-    async def get_state(self, obj_id: str) -> dict[str, Any]:
+    async def get_state(self, obj_id: int) -> dict[str, Any]:
         """Request object state."""
         return await self.request(
             {
@@ -147,7 +153,7 @@ class ZontWsApi:
             }
         )
 
-    async def send_command(self, obj_id: int, cmd: Any) -> dict[str, Any]:
+    async def send_command(self, obj_id: int, cmd: int) -> dict[str, Any]:
         """Send command to object."""
         return await self.request(
             {

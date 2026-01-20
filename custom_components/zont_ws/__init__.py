@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 from .const import (
     DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL,
-    CURRENT_ENTITY_IDS,
+    CURRENT_ENTITY_IDS, WS_KEY_TYPE, ZontType, MODE_BOILER_NAMES, WS_KEY_NAME,
 )
 from .core.zont_data import ZontData
 
@@ -109,6 +109,9 @@ class ZontCoordinator(DataUpdateCoordinator):
         self.zont_ws_api: ZontWsApi = zont_ws_api
         self.zont_data: ZontData = ZontData()
 
+    def _on_ws_message(self, data):
+        _LOGGER.debug(f'{self.zont_ws_api.url}. Message => {data}')
+
     def get_devices_info(self):
         device_info = DeviceInfo(**{
             "identifiers": {(DOMAIN, self.zont_ws_api.name)},
@@ -129,24 +132,39 @@ class ZontCoordinator(DataUpdateCoordinator):
              self.zont_data.device_info.software,
              self.zont_data.device_info.hardware) = text.split(':')[1].split(' ')
 
+    def check_mode(self, id_control: int, state_control: dict) -> bool:
+        print(type(state_control.get(WS_KEY_TYPE)))
+        if state_control.get(WS_KEY_TYPE) == ZontType.MODE:
+            for tag in MODE_BOILER_NAMES:
+                name: str = state_control.get(WS_KEY_NAME)
+                if not name:
+                    return False
+                if tag in name.lower():
+                    return False
+            self.zont_data.circuit_modes.update({id_control: state_control})
+        return True
+
     async def update_ids(self):
         ids = await self.zont_ws_api.get_ids()
         actual_ids = []
         _LOGGER.debug(f'All updated ids: {ids}. Count: {len(ids)}')
-        for id in ids:
-            state_control = await self.zont_ws_api.get_state(id)
+        for id_control in ids:
+            state_control = await self.zont_ws_api.get_state(id_control)
             if not 'failed' in state_control:
-                actual_ids.append(id)
+                if self.check_mode(id_control, state_control):
+                    self.zont_data.controls.update({id_control: state_control})
+                    actual_ids.append(id_control)
         _LOGGER.debug(f'Actual ids: {actual_ids}. Count: {len(actual_ids)}')
         self.zont_data.ids = actual_ids
 
     async def init_device(self):
-        _LOGGER.debug(f'Controller is initializing... '
+        _LOGGER.info(f'Controller is initializing... '
                       f'(name: {self.zont_ws_api.name})')
         try:
             await self.update_device_info()
             await self.update_ids()
-            _LOGGER.debug(f'Controller is initializing... '
+            self.zont_ws_api.add_listener(self._on_ws_message)
+            _LOGGER.info(f'Controller initialized successfully. '
                           f'(name: {self.zont_ws_api.name})')
         except Exception as err:
             _LOGGER.error(f'Initializing failed.'
