@@ -161,6 +161,7 @@ class ZontCoordinator(DataUpdateCoordinator):
         _LOGGER.info(f'Controller is initializing... '
                       f'(name: {self.zont_ws_api.name})')
         try:
+            await self.zont_ws_api.connect()
             await self.update_device_info()
             await self.update_ids()
             self.zont_ws_api.add_listener(self._on_ws_message)

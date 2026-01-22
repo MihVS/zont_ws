@@ -125,7 +125,7 @@ class ZontWsApi:
         self._connected = False
 
     async def request(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Send request and wait for response."""
+        """Send request."""
         async with self._lock:
             if not self._connected:
                 _LOGGER.error(f'WS not connected. Host: {self._host}')
