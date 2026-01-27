@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from datetime import timedelta
@@ -13,8 +14,9 @@ from homeassistant.helpers.update_coordinator import (
 from .const import (
     DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL,
     CURRENT_ENTITY_IDS, WS_KEY_TYPE, ZontType, MODE_BOILER_NAMES, WS_KEY_NAME,
+    WS_KEY_SERVICE_CMD_RESULT, WS_KEY_ID, WS_KEY_CMD_RESULT, WS_KEY_IDS,
 )
-from .core.zont_data import ZontData
+from .core.zont_data import ZontDeviceInfo
 
 from .core.zont_ws_api import ZontWsApi
 
@@ -107,32 +109,40 @@ class ZontCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=TIME_UPDATE),
         )
         self.zont_ws_api: ZontWsApi = zont_ws_api
-        self.zont_data: ZontData = ZontData()
+        self.zont_info: ZontDeviceInfo = ZontDeviceInfo()
+        self.zont_sensors_ids = []
+        self.data = {}
 
     def _on_ws_message(self, data):
-        _LOGGER.debug(f'{self.zont_ws_api.url}. Message => {data}')
+        _LOGGER.debug(f'{self.zont_ws_api.url}. ZONT Message => {data}')
+        if WS_KEY_CMD_RESULT in data:
+            return
+        if WS_KEY_ID in data:
+            self.data.update({data[WS_KEY_ID]: data})
+            return
+        self.data.update(data)
 
     def get_devices_info(self):
+        zont_info = self.data.get(WS_KEY_SERVICE_CMD_RESULT)
+        if zont_info:
+            (
+                self.zont_info.model,
+                self.zont_info.software,
+                self.zont_info.hardware) = zont_info.split(':')[1].split(' ')
+
         device_info = DeviceInfo(**{
             "identifiers": {(DOMAIN, self.zont_ws_api.name)},
             "name": self.zont_ws_api.name,
-            "sw_version":self.zont_data.device_info.software,
-            "hw_version": self.zont_data.device_info.hardware,
+            "sw_version": self.zont_info.software,
+            "hw_version": self.zont_info.hardware,
             "configuration_url": CONFIGURATION_URL,
-            "model": self.zont_data.device_info.model,
+            "model": self.zont_info.model,
             "manufacturer": MANUFACTURER,
         })
         return device_info
 
-    async def update_device_info(self):
-        text = await self.zont_ws_api.send_system_command('#S7?')
-        _LOGGER.debug(f'updated device info: {text}')
-        if text:
-            (self.zont_data.device_info.model,
-             self.zont_data.device_info.software,
-             self.zont_data.device_info.hardware) = text.split(':')[1].split(' ')
-
-    def check_mode(self, id_control: int, state_control: dict) -> bool:
+    @staticmethod
+    def check_mode(state_control: dict) -> bool:
         print(type(state_control.get(WS_KEY_TYPE)))
         if state_control.get(WS_KEY_TYPE) == ZontType.MODE:
             for tag in MODE_BOILER_NAMES:
@@ -141,30 +151,27 @@ class ZontCoordinator(DataUpdateCoordinator):
                     return False
                 if tag in name.lower():
                     return False
-            self.zont_data.circuit_modes.update({id_control: state_control})
         return True
 
-    async def update_ids(self):
-        ids = await self.zont_ws_api.get_ids()
-        actual_ids = []
-        _LOGGER.debug(f'All updated ids: {ids}. Count: {len(ids)}')
+    async def init_controls(self):
+        await asyncio.sleep(0.2)
+        ids = self.data.get(WS_KEY_IDS)
+        if not ids:
+            return
         for id_control in ids:
-            state_control = await self.zont_ws_api.get_state(id_control)
-            if not 'failed' in state_control:
-                if self.check_mode(id_control, state_control):
-                    self.zont_data.controls.update({id_control: state_control})
-                    actual_ids.append(id_control)
-        _LOGGER.debug(f'Actual ids: {actual_ids}. Count: {len(actual_ids)}')
-        self.zont_data.ids = actual_ids
+            await self.zont_ws_api.get_state(id_control)
 
     async def init_device(self):
         _LOGGER.info(f'Controller is initializing... '
                       f'(name: {self.zont_ws_api.name})')
         try:
-            await self.zont_ws_api.connect()
-            await self.update_device_info()
-            await self.update_ids()
             self.zont_ws_api.add_listener(self._on_ws_message)
+            await self.zont_ws_api.connect()
+            await asyncio.sleep(1)
+            await self.zont_ws_api.send_system_command('#S7?')
+            await self.zont_ws_api.get_ids()
+            await self.init_controls()
+            _LOGGER.debug(f'Initialized data: {self.data}')
             _LOGGER.info(f'Controller initialized successfully. '
                           f'(name: {self.zont_ws_api.name})')
         except Exception as err:
@@ -174,8 +181,7 @@ class ZontCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Обновление данных API zont"""
         _LOGGER.warning(f'Start update data.')
-        for id in self.zont_data.ids:
-            state_control = await self.zont_ws_api.get_state(id)
-            self.zont_data.controls.update({id: state_control})
+        for sensor_id in self.zont_sensors_ids:
+            await self.zont_ws_api.get_state(sensor_id)
         _LOGGER.warning(f'Finish update data.')
-        _LOGGER.debug(f'data: {self.zont_data.controls}')
+        _LOGGER.debug(f'data: {self.data}')

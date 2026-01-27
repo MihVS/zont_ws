@@ -124,45 +124,42 @@ class ZontWsApi:
         self._ws = None
         self._connected = False
 
-    async def request(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """Send request."""
+    async def send_message(self, payload: dict[str, Any]):
         async with self._lock:
             if not self._connected:
                 _LOGGER.error(f'WS not connected. Host: {self._host}')
                 raise ZontWsError('WS not connected')
             _LOGGER.debug(f'Host: {self._host}. ZONT WS → {payload}')
             await self._ws.send_json(payload)
-            msg = await self._ws.receive(timeout=10)
-            if msg.type != aiohttp.WSMsgType.TEXT:
-                raise ZontWsError('Invalid response')
-            data = msg.json()
-            _LOGGER.debug(f'Host: {self._host}. ZONT WS ← {data}')
-            return data
 
-    async def get_ids(self, obj_type: str = 255) -> list[int]:
+    # async def request(self, payload: dict[str, Any]) -> dict[str, Any]:
+    #     """Send request."""
+    #     async with self._lock:
+    #         if not self._connected:
+    #             _LOGGER.error(f'WS not connected. Host: {self._host}')
+    #             raise ZontWsError('WS not connected')
+    #         _LOGGER.debug(f'Host: {self._host}. ZONT WS → {payload}')
+    #         await self._ws.send_json(payload)
+    #         msg = await self._ws.receive(timeout=10)
+    #         if msg.type != aiohttp.WSMsgType.TEXT:
+    #             raise ZontWsError('Invalid response')
+    #         data = msg.json()
+    #         _LOGGER.debug(f'Host: {self._host}. ZONT WS ← {data}')
+    #         return data
+
+    async def get_ids(self, obj_type: str = 255):
         """Request list of object IDs."""
-        data = await self.request({WS_KEY_REQUEST_IDS: obj_type})
-        return data.get(WS_KEY_IDS, [])
+        await self.send_message({WS_KEY_REQUEST_IDS: obj_type})
 
-    async def get_state(self, obj_id: int) -> dict[str, Any]:
+    async def get_state(self, obj_id: int):
         """Request object state."""
-        return await self.request(
-            {
-                WS_KEY_ID: obj_id,
-                WS_KEY_REQUEST_STATE: 0,
-            }
-        )
+        _LOGGER.debug(f'Host: {self._host}. Get state for id: {obj_id}')
+        await self.send_message({WS_KEY_ID: obj_id, WS_KEY_REQUEST_STATE: 0,})
 
     async def send_command(self, obj_id: int, cmd: int) -> dict[str, Any]:
         """Send command to object."""
-        return await self.request(
-            {
-                WS_KEY_ID: obj_id,
-                WS_KEY_CMD: cmd,
-            }
-        )
+        return await self.send_message({WS_KEY_ID: obj_id, WS_KEY_CMD: cmd,})
 
-    async def send_system_command(self, scmd: str) -> str:
+    async def send_system_command(self, scmd: str):
         """Send system command (#S7?, etc)."""
-        data = await self.request({WS_KEY_SERVICE_CMD: scmd})
-        return data.get(WS_KEY_SERVICE_CMD_RESULT, '')
+        await self.send_message({WS_KEY_SERVICE_CMD: scmd})

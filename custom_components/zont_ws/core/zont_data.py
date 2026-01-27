@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class ZontDeviceInfo:
-    model: str = ''
+    model: str = 'ZONT'
     hardware: str = ''
     software: str = ''
 

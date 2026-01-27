@@ -27,11 +27,12 @@ async def async_setup_entry(
 
     coordinator: ZontCoordinator = hass.data[DOMAIN][ENTRIES][entry_id]
 
-    for control_id, control_state  in coordinator.zont_data.controls.items():
+    for control_id, control_state  in coordinator.data.items():
         sens = []
         type_control = control_state.get(WS_KEY_TYPE)
         match type_control:
             case ZontType.NTC_TEMP_SENSOR | ZontType.DS18_TEMP_SENSOR:
+                coordinator.zont_sensors_ids.append(control_id)
                 unique_id = f'{entry_id}{control_id}-temperature'
                 unit = UnitOfTemperature.CELSIUS
                 sens.append(ZontSensorTemperature(
@@ -72,7 +73,7 @@ class ZontSensorTemperature(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> float | str:
         """Возвращает состояние сенсора"""
-        control_state = self._coord.zont_data.controls.get(self._control_id, {})
+        control_state = self._coord.data.get(self._control_id, {})
         return control_state.get(WS_KEY_TEMPERATURE)
 
     @cached_property
@@ -90,5 +91,5 @@ class ZontSensorTemperature(CoordinatorEntity, SensorEntity):
     def __repr__(self) -> str:
         if not self.hass:
             return (f'<Sensor entity '
-                    f'{self._coord.zont_data.device_info.model}-{self.name}>')
+                    f'{self._coord.zont_info.model}-{self.name}>')
         return super().__repr__()
