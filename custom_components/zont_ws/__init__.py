@@ -167,7 +167,6 @@ class ZontCoordinator(DataUpdateCoordinator):
         try:
             self.zont_ws_api.add_listener(self._on_ws_message)
             await self.zont_ws_api.connect()
-            await asyncio.sleep(1)
             await self.zont_ws_api.send_system_command('#S7?')
             await self.zont_ws_api.get_ids()
             await self.init_controls()
@@ -180,8 +179,9 @@ class ZontCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Обновление данных API zont"""
-        _LOGGER.warning(f'Start update data.')
+        _LOGGER.warning(f'Start update zont_data.')
         for sensor_id in self.zont_sensors_ids:
             await self.zont_ws_api.get_state(sensor_id)
-        _LOGGER.warning(f'Finish update data.')
+        _LOGGER.warning(f'Finish update zont_data.')
         _LOGGER.debug(f'data: {self.data}')
+        return self.data

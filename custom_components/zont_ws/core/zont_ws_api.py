@@ -81,12 +81,15 @@ class ZontWsApi:
             self._connected = True
             _LOGGER.debug(f'ZONT WS connected and authorized. '
                           f'Host: {self._host}')
-            self._listener_task = asyncio.create_task(self._listen())
 
         except Exception as err:
             await self.close()
             raise ZontWsError(f'WS connect failed: {err}. '
                               f'Host: {self._host}') from err
+
+    async def create_listener_task(self):
+        _LOGGER.debug(f'Creating listener task...')
+        self._listener_task = asyncio.create_task(self._listen())
 
     async def _listen(self):
         _LOGGER.debug('WS listener started')
@@ -131,6 +134,26 @@ class ZontWsApi:
                 raise ZontWsError('WS not connected')
             _LOGGER.debug(f'Host: {self._host}. ZONT WS → {payload}')
             await self._ws.send_json(payload)
+
+    async def get_init_data(self) -> dict:
+        data = {}
+
+        await self.send_system_command('#S7?')
+        await self.get_ids()
+
+
+        deadline = asyncio.get_running_loop().time() + 10
+
+        while asyncio.get_running_loop().time() < deadline:
+            msg = await self._ws.receive(timeout=1)
+
+            if msg.type != aiohttp.WSMsgType.TEXT:
+                continue
+
+            data = parse(msg)
+
+        return data
+
 
     # async def request(self, payload: dict[str, Any]) -> dict[str, Any]:
     #     """Send request."""

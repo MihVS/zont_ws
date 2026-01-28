@@ -27,7 +27,7 @@ async def async_setup_entry(
 
     coordinator: ZontCoordinator = hass.data[DOMAIN][ENTRIES][entry_id]
 
-    for control_id, control_state  in coordinator.data.items():
+    for control_id, control_state  in coordinator.zont_data.items():
         sens = []
         type_control = control_state.get(WS_KEY_TYPE)
         match type_control:
