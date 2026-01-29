@@ -9,9 +9,10 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from ..const import (
     WS_TIMEOUT_REQUEST, HEARTBEAT, WS_KEY_USER, WS_KEY_AUTH,
     WS_KEY_REQUEST_IDS, WS_KEY_IDS, WS_KEY_ID, WS_KEY_REQUEST_STATE,
-    WS_KEY_CMD, WS_KEY_SERVICE_CMD, WS_KEY_SERVICE_CMD_RESULT, WS_KEY_PASS
+    WS_KEY_CMD, WS_KEY_SERVICE_CMD, WS_KEY_SERVICE_CMD_RESULT, WS_KEY_PASS,
+    WS_KEY_FAILED
 )
-from .exceptions import ZontAuthError, ZontWsError, ZontUrlError
+from .exceptions import ZontAuthError, ZontWsError, ZontUrlError, ZontInitError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class ZontWsApi:
                 }
             )
 
-            msg = await self._ws.receive(timeout=10)
+            msg = await self._ws.receive(timeout=5)
 
             if msg.type != aiohttp.WSMsgType.TEXT:
                 raise ZontWsError(f'Invalid auth response. Host: {self._host}')
@@ -138,37 +139,48 @@ class ZontWsApi:
     async def get_init_data(self) -> dict:
         data = {}
 
-        await self.send_system_command('#S7?')
         await self.get_ids()
+        deadline = asyncio.get_running_loop().time() + 3
+        while asyncio.get_running_loop().time() < deadline:
+            try:
+                msg = await self._ws.receive(timeout=1)
+            except asyncio.TimeoutError:
+                continue
+            if msg.type != aiohttp.WSMsgType.TEXT:
+                continue
+            control_data = msg.json()
+            _LOGGER.debug(f'ZONT WS ← {control_data}')
+            if WS_KEY_IDS in control_data:
+                _LOGGER.debug(f'Got ids for initialization.')
+                data.update(control_data)
+        if not data.get(WS_KEY_IDS):
+            _LOGGER.error(f'Host: {self._host}. Init failed.')
+            raise ZontInitError('Could not get ids.')
 
+        await self.send_system_command()
+        for control_id in data[WS_KEY_IDS]:
+            await self.get_state(control_id)
 
         deadline = asyncio.get_running_loop().time() + 10
 
         while asyncio.get_running_loop().time() < deadline:
-            msg = await self._ws.receive(timeout=1)
-
+            try:
+                msg = await self._ws.receive(timeout=1)
+            except asyncio.TimeoutError:
+                continue
             if msg.type != aiohttp.WSMsgType.TEXT:
                 continue
-
-            data = parse(msg)
-
+            control_data = msg.json()
+            if WS_KEY_FAILED in control_data:
+                continue
+            if WS_KEY_ID in control_data:
+                data.update({control_data[WS_KEY_ID]: control_data})
+                _LOGGER.debug(f'Init data updated by '
+                              f'"{control_data[WS_KEY_ID]}: {control_data}"')
+            else:
+                data.update(control_data)
+                _LOGGER.debug(f'Init data updated by {control_data}')
         return data
-
-
-    # async def request(self, payload: dict[str, Any]) -> dict[str, Any]:
-    #     """Send request."""
-    #     async with self._lock:
-    #         if not self._connected:
-    #             _LOGGER.error(f'WS not connected. Host: {self._host}')
-    #             raise ZontWsError('WS not connected')
-    #         _LOGGER.debug(f'Host: {self._host}. ZONT WS → {payload}')
-    #         await self._ws.send_json(payload)
-    #         msg = await self._ws.receive(timeout=10)
-    #         if msg.type != aiohttp.WSMsgType.TEXT:
-    #             raise ZontWsError('Invalid response')
-    #         data = msg.json()
-    #         _LOGGER.debug(f'Host: {self._host}. ZONT WS ← {data}')
-    #         return data
 
     async def get_ids(self, obj_type: str = 255):
         """Request list of object IDs."""
@@ -183,6 +195,6 @@ class ZontWsApi:
         """Send command to object."""
         return await self.send_message({WS_KEY_ID: obj_id, WS_KEY_CMD: cmd,})
 
-    async def send_system_command(self, scmd: str):
-        """Send system command (#S7?, etc)."""
-        await self.send_message({WS_KEY_SERVICE_CMD: scmd})
+    async def send_system_command(self):
+        """Send system command (#S7?)."""
+        await self.send_message({WS_KEY_SERVICE_CMD: '#S7?'})

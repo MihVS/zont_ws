@@ -27,8 +27,10 @@ async def async_setup_entry(
 
     coordinator: ZontCoordinator = hass.data[DOMAIN][ENTRIES][entry_id]
 
-    for control_id, control_state  in coordinator.zont_data.items():
+    for control_id, control_state  in coordinator.data.items():
         sens = []
+        if not isinstance(control_state, dict):
+            continue
         type_control = control_state.get(WS_KEY_TYPE)
         match type_control:
             case ZontType.NTC_TEMP_SENSOR | ZontType.DS18_TEMP_SENSOR:

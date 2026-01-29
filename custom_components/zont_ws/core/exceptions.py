@@ -6,5 +6,9 @@ class ZontAuthError(ZontWsError):
     """Authentication failed."""
 
 
+class ZontInitError(ZontWsError):
+    """Initialization failed."""
+
+
 class ZontUrlError(ZontWsError):
     """URL failed."""

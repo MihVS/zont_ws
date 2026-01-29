@@ -16,6 +16,7 @@ from .const import (
     CURRENT_ENTITY_IDS, WS_KEY_TYPE, ZontType, MODE_BOILER_NAMES, WS_KEY_NAME,
     WS_KEY_SERVICE_CMD_RESULT, WS_KEY_ID, WS_KEY_CMD_RESULT, WS_KEY_IDS,
 )
+from .core.exceptions import ZontInitError
 from .core.zont_data import ZontDeviceInfo
 
 from .core.zont_ws_api import ZontWsApi
@@ -127,8 +128,8 @@ class ZontCoordinator(DataUpdateCoordinator):
         if zont_info:
             (
                 self.zont_info.model,
-                self.zont_info.software,
-                self.zont_info.hardware) = zont_info.split(':')[1].split(' ')
+                self.zont_info.hardware,
+                self.zont_info.software) = zont_info.split(':')[1].split(' ')
 
         device_info = DeviceInfo(**{
             "identifiers": {(DOMAIN, self.zont_ws_api.name)},
@@ -153,35 +154,26 @@ class ZontCoordinator(DataUpdateCoordinator):
                     return False
         return True
 
-    async def init_controls(self):
-        await asyncio.sleep(0.2)
-        ids = self.data.get(WS_KEY_IDS)
-        if not ids:
-            return
-        for id_control in ids:
-            await self.zont_ws_api.get_state(id_control)
-
     async def init_device(self):
         _LOGGER.info(f'Controller is initializing... '
                       f'(name: {self.zont_ws_api.name})')
         try:
-            self.zont_ws_api.add_listener(self._on_ws_message)
             await self.zont_ws_api.connect()
-            await self.zont_ws_api.send_system_command('#S7?')
-            await self.zont_ws_api.get_ids()
-            await self.init_controls()
+            self.data = await self.zont_ws_api.get_init_data()
+            await self.zont_ws_api.create_listener_task()
+            self.zont_ws_api.add_listener(self._on_ws_message)
             _LOGGER.debug(f'Initialized data: {self.data}')
             _LOGGER.info(f'Controller initialized successfully. '
                           f'(name: {self.zont_ws_api.name})')
         except Exception as err:
             _LOGGER.error(f'Initializing failed.'
                           f'(name: {self.zont_ws_api.name}). error: {err}')
+            raise ZontInitError
 
     async def _async_update_data(self):
         """Обновление данных API zont"""
-        _LOGGER.warning(f'Start update zont_data.')
+        _LOGGER.info(f'Start update zont_data.')
         for sensor_id in self.zont_sensors_ids:
             await self.zont_ws_api.get_state(sensor_id)
-        _LOGGER.warning(f'Finish update zont_data.')
-        _LOGGER.debug(f'data: {self.data}')
+        _LOGGER.info(f'Finish update zont_data.')
         return self.data

@@ -36,6 +36,7 @@ WS_KEY_SERVICE_CMD = 'scmd'
 WS_KEY_SERVICE_CMD_RESULT = 'scmdres'
 WS_KEY_TEMPERATURE = 't'
 WS_KEY_AVAILABLE = 'a'
+WS_KEY_FAILED = 'failed'
 
 
 class ZontType:
