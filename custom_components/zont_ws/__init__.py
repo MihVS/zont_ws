@@ -111,7 +111,7 @@ class ZontCoordinator(DataUpdateCoordinator):
         )
         self.zont_ws_api: ZontWsApi = zont_ws_api
         self.zont_info: ZontDeviceInfo = ZontDeviceInfo()
-        self.zont_sensors_ids = []
+        self.ids_for_update = []
         self.data = {}
 
     def _on_ws_message(self, data):
@@ -122,6 +122,8 @@ class ZontCoordinator(DataUpdateCoordinator):
             self.data.update({data[WS_KEY_ID]: data})
             return
         self.data.update(data)
+        # self.async_set_updated_data(self.data)
+        self.hass.loop.call_soon(self.async_update_listeners)
 
     def get_devices_info(self):
         zont_info = self.data.get(WS_KEY_SERVICE_CMD_RESULT)
@@ -173,7 +175,7 @@ class ZontCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Обновление данных API zont"""
         _LOGGER.info(f'Start update zont_data.')
-        for sensor_id in self.zont_sensors_ids:
+        for sensor_id in self.ids_for_update:
             await self.zont_ws_api.get_state(sensor_id)
         _LOGGER.info(f'Finish update zont_data.')
         return self.data

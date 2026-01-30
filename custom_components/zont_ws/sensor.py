@@ -4,7 +4,7 @@ from functools import cached_property
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature, TEMPERATURE
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -34,7 +34,7 @@ async def async_setup_entry(
         type_control = control_state.get(WS_KEY_TYPE)
         match type_control:
             case ZontType.NTC_TEMP_SENSOR | ZontType.DS18_TEMP_SENSOR:
-                coordinator.zont_sensors_ids.append(control_id)
+                coordinator.ids_for_update.append(control_id)
                 unique_id = f'{entry_id}{control_id}-temperature'
                 unit = UnitOfTemperature.CELSIUS
                 sens.append(ZontSensorTemperature(

@@ -13,6 +13,8 @@ TIME_UPDATE = 60
 WS_TIMEOUT_REQUEST = 10
 HEARTBEAT = 60
 
+DELTA_KELVINS = 2730
+
 WS_KEY_USER = 'user'
 WS_KEY_PASS = 'pass'
 WS_KEY_AUTH = 'auth'
@@ -62,7 +64,7 @@ PLATFORMS = [
     # 'binary_sensor',
     # 'switch',
     # 'button',
-    # 'climate',
+    'climate',
     # 'alarm_control_panel',
     # 'device_tracker'
 ]
