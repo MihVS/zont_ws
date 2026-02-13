@@ -25,26 +25,26 @@ from .core.zont_ws_api import ZontWsApi
 _LOGGER = logging.getLogger(__name__)
 
 
-# def remove_entity(hass: HomeAssistant, current_entries_id: list,
-#                   config_entry: ConfigEntry):
-#     """Удаление неиспользуемых сущностей"""
-#     entity_registry = async_get(hass)
-#     remove_entities = []
-#     for entity_id, entity in entity_registry.entities.items():
-#         if entity.config_entry_id == config_entry.entry_id:
-#             if entity.unique_id not in current_entries_id:
-#                 remove_entities.append(entity_id)
-#     for entity_id in remove_entities:
-#         entity_registry.async_remove(entity_id)
-#         _LOGGER.info(f'Outdated entity deleted {entity_id}')
+def remove_entity(hass: HomeAssistant, current_entries_id: list,
+                  config_entry: ConfigEntry):
+    """Удаление неиспользуемых сущностей"""
+    entity_registry = async_get(hass)
+    remove_entities = []
+    for entity_id, entity in entity_registry.entities.items():
+        if entity.config_entry_id == config_entry.entry_id:
+            if entity.unique_id not in current_entries_id:
+                remove_entities.append(entity_id)
+    for entity_id in remove_entities:
+        entity_registry.async_remove(entity_id)
+        _LOGGER.info(f'Outdated entity deleted {entity_id}')
 
 
 async def async_setup_entry(
         hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     _LOGGER.debug('async_setup_entry start')
-    # config_entry.async_on_unload(
-    #     config_entry.add_update_listener(update_listener)
-    # )
+    config_entry.async_on_unload(
+        config_entry.add_update_listener(update_listener)
+    )
     entry_id = config_entry.entry_id
     name = config_entry.data.get('name')
     url = config_entry.data.get('url')
@@ -56,6 +56,7 @@ async def async_setup_entry(
 
     await coordinator.init_device()
     await coordinator.async_config_entry_first_refresh()
+    coordinator.zont_ws_api.is_reconnecting = False
 
     _LOGGER.debug(f'config entry data: {config_entry.data}')
 
@@ -69,7 +70,7 @@ async def async_setup_entry(
         config_entry, PLATFORMS
     )
     current_entries_id = hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id]
-    # remove_entity(hass, current_entries_id, config_entry)
+    remove_entity(hass, current_entries_id, config_entry)
     _LOGGER.debug(f'The unique ID of the current device entities {name}:'
                   f' {current_entries_id}')
     _LOGGER.debug(f'Number of relevant entities: '
@@ -77,24 +78,28 @@ async def async_setup_entry(
     return True
 
 
-# async def update_listener(hass, entry):
-#     """Вызывается при изменении настроек интеграции."""
-#     _LOGGER.info(f'Restarting integration for entry_id: {entry.entry_id})')
-#     await hass.config_entries.async_reload(entry.entry_id)
-#
-# async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-#     """Unload a config entry."""
-#     _LOGGER.info(f'Unloading the zont_ha integration: {entry.entry_id}')
-#     try:
-#         unload_ok = await hass.config_entries.async_unload_platforms(
-#             entry, PLATFORMS
-#         )
-#         hass.data[DOMAIN][ENTRIES].pop(entry.entry_id)
-#
-#         return unload_ok
-#     except Exception as e:
-#         _LOGGER.error(f'Error uploading the integration: {e}')
-#         return False
+async def update_listener(hass, entry):
+    """Вызывается при изменении настроек интеграции."""
+    _LOGGER.info(f'Restarting integration for entry_id: {entry.entry_id})')
+    await hass.config_entries.async_reload(entry.entry_id)
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
+    """Unload a config entry."""
+    entry_id = entry.entry_id
+    _LOGGER.info(f'Unloading the zont_ws integration: {entry_id}')
+    try:
+        coordinator: ZontCoordinator = hass.data[DOMAIN][ENTRIES][entry_id]
+        coordinator.zont_ws_api.is_reconnecting = True
+        await coordinator.zont_ws_api.close()
+        unload_ok = await hass.config_entries.async_unload_platforms(
+            entry, PLATFORMS
+        )
+        hass.data[DOMAIN][ENTRIES].pop(entry_id)
+
+        return unload_ok
+    except Exception as e:
+        _LOGGER.error(f'Error uploading the integration: {e}')
+        return False
 
 
 class ZontCoordinator(DataUpdateCoordinator):
@@ -172,12 +177,11 @@ class ZontCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Обновление данных API zont"""
-        _LOGGER.info(f'Start update zont_data.')
+        _LOGGER.info(f'Start polling the controller.')
         try:
             for control_id in self.ids_for_update:
                 await self.zont_ws_api.get_state(control_id)
         except ZontWsError:
-            _LOGGER.info(f'WS is reconnecting...')
-            await self.zont_ws_api.connect()
-        _LOGGER.info(f'Finish update zont_data.')
+            _LOGGER.warning(f'Waiting connect to zont ({self.zont_ws_api.url})...')
+        _LOGGER.info(f'Finish polling the controller.')
         return self.data

@@ -36,7 +36,7 @@ class ZontWsApi:
         self._connected = False
         self._listener_task = None
         self._runner_task = None
-        self._stop = False
+        self.is_reconnecting = False
         self._callbacks = []
 
     @staticmethod
@@ -93,65 +93,39 @@ class ZontWsApi:
     async def start(self):
         if self._runner_task:
             return
-
         self._runner_task = asyncio.create_task(self._run())
 
     async def _run(self):
         """Main reconnect loop."""
-        while not self._stop:
+        i = 0
+        while True:
+            _LOGGER.info(f'Start _run. Loop - {i}')
+            i += 1
             try:
                 await self.connect()
                 await self._listen()
-
             except Exception as err:
                 _LOGGER.warning(f'WS error: {err}')
-
             self._connected = False
-
-            _LOGGER.warning(f'Reconnecting in {TIMEOUT_RECONNECT} seconds...')
-            await asyncio.sleep(TIMEOUT_RECONNECT)
-
-    # async def create_listener_task(self):
-    #     _LOGGER.debug(f'Creating listener task...')
-    #     self._listener_task = asyncio.create_task(self._listen())
+            if not self.is_reconnecting:
+                _LOGGER.warning(
+                    f'Reconnecting in {TIMEOUT_RECONNECT} seconds...'
+                )
+                await asyncio.sleep(TIMEOUT_RECONNECT)
+            else:
+                break
+        _LOGGER.info(f'Finish _run')
 
     async def _listen(self):
         _LOGGER.debug('WS listener started')
-
         async for msg in self._ws:
-
             if msg.type == aiohttp.WSMsgType.TEXT:
                 data = msg.json()
-
                 for cb in self._callbacks:
                     self._hass.async_create_task(cb(data))
-
             else:
                 break
-
         _LOGGER.warning('WS listener stopped')
-
-    # async def _listen(self):
-    #     _LOGGER.debug('WS listener started')
-    #     try:
-    #         async for msg in self._ws:
-    #             if msg.type == aiohttp.WSMsgType.TEXT:
-    #                 data = msg.json()
-    #                 for cb in self._callbacks:
-    #                     self._hass.async_create_task(cb(data))
-    #
-    #             elif msg.type in (
-    #                 aiohttp.WSMsgType.ERROR,
-    #                 aiohttp.WSMsgType.CLOSED,
-    #             ):
-    #                 break
-    #
-    #     except Exception as err:
-    #         _LOGGER.error(f'WS listen error: {err}')
-    #
-    #     finally:
-    #         _LOGGER.warning('WS listener stopped')
-    #         self._connected = False
 
     def add_listener(self, callback):
         self._callbacks.append(callback)
@@ -163,9 +137,8 @@ class ZontWsApi:
             _LOGGER.debug(f'Closing ZONT WS. Host: {self._host}')
             await self._ws.close()
         self._connected = False
-        _LOGGER.debug(f'WS closed. Host: {self._host}')
         self._ws = None
-        self._connected = False
+        _LOGGER.debug(f'WS closed. Host: {self._host}')
 
     async def send_message(self, payload: dict[str, Any]):
         async with self._lock:
@@ -179,7 +152,7 @@ class ZontWsApi:
         data = {}
 
         await self.get_ids()
-        deadline = asyncio.get_running_loop().time() + 3
+        deadline = asyncio.get_running_loop().time() + 2
         while asyncio.get_running_loop().time() < deadline:
             try:
                 msg = await self._ws.receive(timeout=1)
@@ -200,7 +173,7 @@ class ZontWsApi:
         for control_id in data[WS_KEY_IDS]:
             await self.get_state(control_id)
 
-        deadline = asyncio.get_running_loop().time() + 10
+        deadline = asyncio.get_running_loop().time() + 5
 
         while asyncio.get_running_loop().time() < deadline:
             try:
