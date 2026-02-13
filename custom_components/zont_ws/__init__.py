@@ -16,7 +16,7 @@ from .const import (
     CURRENT_ENTITY_IDS, WS_KEY_TYPE, ZontType, MODE_BOILER_NAMES, WS_KEY_NAME,
     WS_KEY_SERVICE_CMD_RESULT, WS_KEY_ID, WS_KEY_CMD_RESULT, WS_KEY_IDS,
 )
-from .core.exceptions import ZontInitError
+from .core.exceptions import ZontInitError, ZontWsError
 from .core.zont_data import ZontDeviceInfo
 
 from .core.zont_ws_api import ZontWsApi
@@ -114,16 +114,15 @@ class ZontCoordinator(DataUpdateCoordinator):
         self.ids_for_update = []
         self.data = {}
 
-    def _on_ws_message(self, data):
+    async def _on_ws_message(self, data):
         _LOGGER.debug(f'{self.zont_ws_api.url}. ZONT Message => {data}')
         if WS_KEY_CMD_RESULT in data:
             return
         if WS_KEY_ID in data:
             self.data.update({data[WS_KEY_ID]: data})
-            return
-        self.data.update(data)
-        # self.async_set_updated_data(self.data)
-        self.hass.loop.call_soon(self.async_update_listeners)
+        else:
+            self.data.update(data)
+        self.async_set_updated_data(self.data)
 
     def get_devices_info(self):
         zont_info = self.data.get(WS_KEY_SERVICE_CMD_RESULT)
@@ -146,7 +145,6 @@ class ZontCoordinator(DataUpdateCoordinator):
 
     @staticmethod
     def check_mode(state_control: dict) -> bool:
-        print(type(state_control.get(WS_KEY_TYPE)))
         if state_control.get(WS_KEY_TYPE) == ZontType.MODE:
             for tag in MODE_BOILER_NAMES:
                 name: str = state_control.get(WS_KEY_NAME)
@@ -162,8 +160,8 @@ class ZontCoordinator(DataUpdateCoordinator):
         try:
             await self.zont_ws_api.connect()
             self.data = await self.zont_ws_api.get_init_data()
-            await self.zont_ws_api.create_listener_task()
             self.zont_ws_api.add_listener(self._on_ws_message)
+            await self.zont_ws_api.start()
             _LOGGER.debug(f'Initialized data: {self.data}')
             _LOGGER.info(f'Controller initialized successfully. '
                           f'(name: {self.zont_ws_api.name})')
@@ -175,7 +173,11 @@ class ZontCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Обновление данных API zont"""
         _LOGGER.info(f'Start update zont_data.')
-        for sensor_id in self.ids_for_update:
-            await self.zont_ws_api.get_state(sensor_id)
+        try:
+            for control_id in self.ids_for_update:
+                await self.zont_ws_api.get_state(control_id)
+        except ZontWsError:
+            _LOGGER.info(f'WS is reconnecting...')
+            await self.zont_ws_api.connect()
         _LOGGER.info(f'Finish update zont_data.')
         return self.data

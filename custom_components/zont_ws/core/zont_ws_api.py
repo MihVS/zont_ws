@@ -10,7 +10,7 @@ from ..const import (
     WS_TIMEOUT_REQUEST, HEARTBEAT, WS_KEY_USER, WS_KEY_AUTH,
     WS_KEY_REQUEST_IDS, WS_KEY_IDS, WS_KEY_ID, WS_KEY_REQUEST_STATE,
     WS_KEY_CMD, WS_KEY_SERVICE_CMD, WS_KEY_SERVICE_CMD_RESULT, WS_KEY_PASS,
-    WS_KEY_FAILED
+    WS_KEY_FAILED, TIMEOUT_RECONNECT
 )
 from .exceptions import ZontAuthError, ZontWsError, ZontUrlError, ZontInitError
 
@@ -35,6 +35,8 @@ class ZontWsApi:
         self._lock = asyncio.Lock()
         self._connected = False
         self._listener_task = None
+        self._runner_task = None
+        self._stop = False
         self._callbacks = []
 
     @staticmethod
@@ -88,31 +90,68 @@ class ZontWsApi:
             raise ZontWsError(f'WS connect failed: {err}. '
                               f'Host: {self._host}') from err
 
-    async def create_listener_task(self):
-        _LOGGER.debug(f'Creating listener task...')
-        self._listener_task = asyncio.create_task(self._listen())
+    async def start(self):
+        if self._runner_task:
+            return
+
+        self._runner_task = asyncio.create_task(self._run())
+
+    async def _run(self):
+        """Main reconnect loop."""
+        while not self._stop:
+            try:
+                await self.connect()
+                await self._listen()
+
+            except Exception as err:
+                _LOGGER.warning(f'WS error: {err}')
+
+            self._connected = False
+
+            _LOGGER.warning(f'Reconnecting in {TIMEOUT_RECONNECT} seconds...')
+            await asyncio.sleep(TIMEOUT_RECONNECT)
+
+    # async def create_listener_task(self):
+    #     _LOGGER.debug(f'Creating listener task...')
+    #     self._listener_task = asyncio.create_task(self._listen())
 
     async def _listen(self):
         _LOGGER.debug('WS listener started')
-        try:
-            async for msg in self._ws:
-                if msg.type == aiohttp.WSMsgType.TEXT:
-                    data = msg.json()
-                    for cb in self._callbacks:
-                        cb(data)
 
-                elif msg.type in (
-                    aiohttp.WSMsgType.ERROR,
-                    aiohttp.WSMsgType.CLOSED,
-                ):
-                    break
+        async for msg in self._ws:
 
-        except Exception as err:
-            _LOGGER.error(f'WS listen error: {err}')
+            if msg.type == aiohttp.WSMsgType.TEXT:
+                data = msg.json()
 
-        finally:
-            _LOGGER.warning('WS listener stopped')
-            self._connected = False
+                for cb in self._callbacks:
+                    self._hass.async_create_task(cb(data))
+
+            else:
+                break
+
+        _LOGGER.warning('WS listener stopped')
+
+    # async def _listen(self):
+    #     _LOGGER.debug('WS listener started')
+    #     try:
+    #         async for msg in self._ws:
+    #             if msg.type == aiohttp.WSMsgType.TEXT:
+    #                 data = msg.json()
+    #                 for cb in self._callbacks:
+    #                     self._hass.async_create_task(cb(data))
+    #
+    #             elif msg.type in (
+    #                 aiohttp.WSMsgType.ERROR,
+    #                 aiohttp.WSMsgType.CLOSED,
+    #             ):
+    #                 break
+    #
+    #     except Exception as err:
+    #         _LOGGER.error(f'WS listen error: {err}')
+    #
+    #     finally:
+    #         _LOGGER.warning('WS listener stopped')
+    #         self._connected = False
 
     def add_listener(self, callback):
         self._callbacks.append(callback)
