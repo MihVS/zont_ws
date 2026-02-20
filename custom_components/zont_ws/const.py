@@ -41,6 +41,9 @@ WS_KEY_TEMPERATURE = 't'
 WS_KEY_AVAILABLE = 'a'
 WS_KEY_FAILED = 'failed'
 
+COMMAND_ON = 1
+COMMAND_OFF = 0
+
 
 class ZontType:
     """Types of controls."""
@@ -64,7 +67,7 @@ PLATFORMS = [
     'sensor',
     # 'binary_sensor',
     # 'switch',
-    # 'button',
+    'button',
     'climate',
     # 'alarm_control_panel',
     # 'device_tracker'
@@ -79,3 +82,15 @@ MAX_TEMP_FLOOR = 45
 MATCHES_GVS = ('гвс', 'горяч', 'вода', 'бкн', 'гидро', 'подача')
 MATCHES_FLOOR = ('пол', 'тёплый',)
 MODE_BOILER_NAMES = ['газ',  'электри', 'котёл', 'котел', 'котл']
+
+HEATING_MODES = {
+    'комфорт': 'mdi:emoticon-happy-outline',
+    'эко': 'mdi:leaf-circle-outline',
+    'лето': 'mdi:weather-sunny',
+    'расписание': 'mdi:clock-outline',
+    'выкл': 'mdi:power',
+    'тишина': 'mdi:sleep',
+    'дома': 'mdi:home-outline',
+    'не дома': 'mdi:home-off-outline',
+    'гвс': 'mdi:water-boiler',
+}
