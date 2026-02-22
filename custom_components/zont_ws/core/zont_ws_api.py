@@ -160,7 +160,7 @@ class ZontWsApi:
             if msg.type != aiohttp.WSMsgType.TEXT:
                 continue
             control_data = msg.json()
-            _LOGGER.debug(f'ZONT WS ← {control_data}')
+            _LOGGER.debug(f'ZONT WS <= {control_data}')
             if WS_KEY_IDS in control_data:
                 _LOGGER.debug(f'Got ids for initialization.')
                 data.update(control_data)

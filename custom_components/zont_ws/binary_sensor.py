@@ -43,6 +43,7 @@ async def async_setup_entry(
             case ZontType.ANALOG_INPUT:
                 type_analog = control_state.get(WS_KEY_STYPE)
                 if type_analog in ZONT_BINARY_SENSORS:
+                    coordinator.ids_for_update.append(control_id)
                     unique_id = f'{entry_id}{control_id}-binary_analog'
                     binary_sensors.append(ZontBinarySensorAnalog(
                         coordinator, control_state, unique_id)
