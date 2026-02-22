@@ -120,7 +120,7 @@ class ZontCoordinator(DataUpdateCoordinator):
         self.data = {}
 
     async def _on_ws_message(self, data):
-        _LOGGER.debug(f'{self.zont_ws_api.url}. ZONT Message => {data}')
+        _LOGGER.debug(f'{self.zont_ws_api.url}. ZONT Message <= {data}')
         if WS_KEY_CMD_RESULT in data:
             return
         if WS_KEY_ID in data:

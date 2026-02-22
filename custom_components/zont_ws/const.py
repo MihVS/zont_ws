@@ -24,11 +24,11 @@ WS_AUTH_ERROR = 401
 WS_KEY_REQUEST_IDS = 'req_ids'
 WS_KEY_IDS = 'ids'
 WS_KEY_ID = 'id'
-# WS_KEY_RESPONSE_ID = 'Id'
 WS_KEY_MODE_ID = 'm_id'
 WS_KEY_MODE = 'm'
 WS_KEY_CURRENT_TEMP = 'c'
 WS_KEY_TARGET_TEMP = 's'
+WS_KEY_STATE = 's'
 WS_KEY_REQUEST_STATE = 'req_state'
 WS_KEY_TYPE = 'type'
 WS_KEY_NAME = 'name'
@@ -63,10 +63,19 @@ class ZontType:
     ANY = 255
 
 
+class ZontWebElmType:
+    """Types of web elements."""
+
+    BINARY = 0
+    BUTTON = 1
+    SWITCH = 2
+    ANALOG = 3
+
+
 PLATFORMS = [
     'sensor',
     # 'binary_sensor',
-    # 'switch',
+    'switch',
     'button',
     'climate',
     # 'alarm_control_panel',

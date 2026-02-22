@@ -6,13 +6,12 @@ import aiohttp
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from ..const import (
-    WS_TIMEOUT_REQUEST, HEARTBEAT, WS_KEY_USER, WS_KEY_AUTH,
-    WS_KEY_REQUEST_IDS, WS_KEY_IDS, WS_KEY_ID, WS_KEY_REQUEST_STATE,
-    WS_KEY_CMD, WS_KEY_SERVICE_CMD, WS_KEY_SERVICE_CMD_RESULT, WS_KEY_PASS,
-    WS_KEY_FAILED, TIMEOUT_RECONNECT
-)
 from .exceptions import ZontAuthError, ZontWsError, ZontUrlError, ZontInitError
+from ..const import (
+    WS_TIMEOUT_REQUEST, HEARTBEAT, WS_KEY_USER, WS_KEY_AUTH, WS_KEY_IDS,
+    WS_KEY_REQUEST_IDS, WS_KEY_ID, WS_KEY_REQUEST_STATE, WS_KEY_CMD,
+     WS_KEY_SERVICE_CMD, WS_KEY_PASS, WS_KEY_FAILED, TIMEOUT_RECONNECT
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -145,7 +144,7 @@ class ZontWsApi:
             if not self._connected:
                 _LOGGER.error(f'WS not connected. Host: {self._host}')
                 raise ZontWsError('WS not connected')
-            _LOGGER.debug(f'Host: {self._host}. ZONT WS → {payload}')
+            _LOGGER.debug(f'Host: {self._host}. ZONT WS => {payload}')
             await self._ws.send_json(payload)
 
     async def get_init_data(self) -> dict:

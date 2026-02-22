@@ -1,6 +1,6 @@
 import logging
 
-from homeassistant.components.button import ButtonEntity
+from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -8,7 +8,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import ZontCoordinator
 from .const import (
     DOMAIN, CURRENT_ENTITY_IDS, ENTRIES, WS_KEY_ID, WS_KEY_TYPE, ZontType,
-    WS_KEY_NAME, COMMAND_ON, HEATING_MODES, WS_KEY_STYPE, ZontWebElmType
+    WS_KEY_NAME, COMMAND_ON, COMMAND_OFF, WS_KEY_STATE, ZontWebElmType,
+    WS_KEY_STYPE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,32 +25,28 @@ async def async_setup_entry(
     coordinator: ZontCoordinator = hass.data[DOMAIN][ENTRIES][entry_id]
 
     for control_id, control_state in coordinator.data.items():
-        buttons = []
+        switches = []
         if not isinstance(control_state, dict):
             continue
         type_control = control_state.get(WS_KEY_TYPE)
         match type_control:
-            case ZontType.MODE:
-                unique_id = f'{entry_id}{control_id}-button_mode'
-                buttons.append(HeatingModeButton(
-                    coordinator, control_state, unique_id)
-                )
             case ZontType.WEB_ELEMENT:
                 type_web_elm = control_state.get(WS_KEY_STYPE)
-                if type_web_elm == ZontWebElmType.BUTTON:
-                    unique_id = f'{entry_id}{control_id}-button_web_elm'
-                    buttons.append(ButtonZont(
+                if type_web_elm == ZontWebElmType.SWITCH:
+                    coordinator.ids_for_update.append(control_id)
+                    unique_id = f'{entry_id}{control_id}-switch'
+                    switches.append(SwitchZont(
                         coordinator, control_state, unique_id)
                     )
-        for button in buttons:
+        for switch in switches:
             hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
-                button.unique_id)
-        if buttons:
-            async_add_entities(buttons)
-            _LOGGER.debug(f'Added buttons: {buttons}')
+                switch.unique_id)
+        if switches:
+            async_add_entities(switches)
+            _LOGGER.debug(f'Added buttons: {switches}')
 
 
-class ButtonZont(CoordinatorEntity, ButtonEntity):
+class SwitchZont(CoordinatorEntity, SwitchEntity):
 
     def __init__(self,
                  coordinator: ZontCoordinator,
@@ -76,26 +73,28 @@ class ButtonZont(CoordinatorEntity, ButtonEntity):
             return f"<Button entity {self.name}>"
         return super().__repr__()
 
-    async def async_press(self) -> None:
-        """Handle the button press."""
+    @property
+    def is_on(self) -> bool | None:
+        """Return True if entity is on."""
+        control_state = self._coord.data.get(self._control_id)
+        if control_state:
+            return control_state.get(WS_KEY_STATE)
+
+    async def async_turn_on(self, **kwargs):
+        """Turn the entity on."""
         await self._coord.zont_ws_api.send_command(
             self._control_id, COMMAND_ON
         )
 
+    async def async_turn_off(self, **kwargs):
+        """Turn the entity off."""
+        await self._coord.zont_ws_api.send_command(
+            self._control_id, COMMAND_OFF
+        )
 
-class HeatingModeButton(ButtonZont):
-
-    def __init__(self,
-                 coordinator: ZontCoordinator,
-                 control_state: dict,
-                 unique_id: str
-    ) -> None:
-        super().__init__(coordinator, control_state, unique_id)
-        self._attr_icon = self.get_icon(self._name)
-
-    @staticmethod
-    def get_icon(name_mode: str) -> str:
-        for mode, icon in HEATING_MODES.items():
-            if mode.lower() in name_mode.lower():
-                return icon
-        return 'mdi:refresh-circle'
+    async def async_toggle(self, **kwargs):
+        """Toggle the entity."""
+        if self.is_on:
+            await self.async_turn_off()
+        else:
+            await self.async_turn_on()
