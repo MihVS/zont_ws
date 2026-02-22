@@ -40,6 +40,7 @@ WS_KEY_SERVICE_CMD_RESULT = 'scmdres'
 WS_KEY_TEMPERATURE = 't'
 WS_KEY_AVAILABLE = 'a'
 WS_KEY_FAILED = 'failed'
+WS_KET_TRIGGERED = 'trig'
 
 COMMAND_ON = 1
 COMMAND_OFF = 0
@@ -72,9 +73,43 @@ class ZontWebElmType:
     ANALOG = 3
 
 
+class ZontAnalogType:
+    """Type of the analog input."""
+
+    ANALOG = 0
+    PRESSURE_5_BAR = 1
+    PRESSURE_12_BAR = 2
+    DOOR_SENSOR = 3
+    MOTION_SENSOR_CONTROL = 4
+    SMOKE_SENSOR = 5
+    LEAK_SENSOR = 6
+    MOTION_SENSOR = 7
+    ROOM_THERMOSTAT = 8
+    BOILER_ALARM_PLUS = 9
+    BOILER_ALARM_MINUS = 10
+    IGNITION_INPUT = 11
+    SPEED_SENSOR = 12
+    ENGINE_RPM_SENSOR = 13
+    DIGITAL_INPUT = 14
+    ALARM_BUTTON = 15
+    FUEL_FLOW_SENSOR = 16
+    HUMIDITY_SENSOR = 17
+    PRESSURE_6_BAR = 18
+    DIGITAL_INPUT_NO = 19
+    DIGITAL_INPUT_NC = 20
+    PRESSURE_10_BAR = 21
+
+
+ZONT_BINARY_SENSORS = (
+    ZontAnalogType.DOOR_SENSOR, ZontAnalogType.MOTION_SENSOR_CONTROL,
+    ZontAnalogType.SMOKE_SENSOR, ZontAnalogType.LEAK_SENSOR,
+    ZontAnalogType.MOTION_SENSOR, ZontAnalogType.DIGITAL_INPUT,
+    ZontAnalogType.DIGITAL_INPUT_NO, ZontAnalogType.DIGITAL_INPUT_NC
+)
+
 PLATFORMS = [
     'sensor',
-    # 'binary_sensor',
+    'binary_sensor',
     'switch',
     'button',
     'climate',
