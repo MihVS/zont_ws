@@ -11,7 +11,7 @@ from . import ZontCoordinator
 from .const import (
     DOMAIN, CURRENT_ENTITY_IDS, ENTRIES, WS_KEY_TYPE, ZontType, WS_KEY_STYPE,
     ZontWebElmType, WS_KEY_ID, WS_KEY_NAME, WS_KEY_STATE, ZontAnalogType,
-    WS_KET_TRIGGERED, ZONT_BINARY_SENSORS
+    WS_KET_TRIGGERED, ZONT_BINARY_SENSORS, WS_KEY_AVAILABLE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ class ZontBinarySensorAnalog(ZontBinarySensor):
                 return BinarySensorDeviceClass.MOISTURE
             case ZontAnalogType.SMOKE_SENSOR:
                 return BinarySensorDeviceClass.SMOKE
-            case ZontAnalogType.MOTION_SENSOR:
+            case ZontAnalogType.MOTION_SENSOR | ZontAnalogType.MOTION_SENSOR_CONTROL:
                 return BinarySensorDeviceClass.MOTION
             case _:
                 return None
@@ -116,3 +116,9 @@ class ZontBinarySensorAnalog(ZontBinarySensor):
         control_state = self._coord.data.get(self._control_id)
         if control_state:
             return bool(control_state.get(WS_KET_TRIGGERED))
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        control_state = self._coord.data.get(self._control_id)
+        return bool(control_state.get(WS_KEY_AVAILABLE))

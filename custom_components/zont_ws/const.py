@@ -13,6 +13,8 @@ TIME_UPDATE = 60
 WS_TIMEOUT_REQUEST = 5
 HEARTBEAT = 60
 TIMEOUT_RECONNECT = 10
+COUNTER_REPEAT = 30
+TIME_OUT_REPEAT = 9
 
 DELTA_KELVINS = 2730
 
@@ -119,8 +121,7 @@ PLATFORMS = [
     'switch',
     'button',
     'climate',
-    # 'alarm_control_panel',
-    # 'device_tracker'
+    'alarm_control_panel',
 ]
 
 MIN_TEMP_AIR = 5
