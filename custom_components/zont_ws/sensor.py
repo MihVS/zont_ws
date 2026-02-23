@@ -46,40 +46,44 @@ async def async_setup_entry(
                 )
             case ZontType.CSH_ADAPTER:
                 coordinator.ids_for_update.append(control_id)
-                unique_id_water = f'{entry_id}{control_id}-temperature_water'
-                unit_water = UnitOfTemperature.CELSIUS
-                sens.append(ZontSensorTemperatureWater(
-                    coordinator, control_state, unique_id_water, unit_water,
-                    prefix='(теплоноситель)')
-                )
-                unique_id_dhw = f'{entry_id}{control_id}-temperature_dhw'
-                unit_dhw = UnitOfTemperature.CELSIUS
-                sens.append(ZontSensorTemperatureDHW(
-                    coordinator, control_state, unique_id_dhw, unit_dhw,
-                    prefix='(ГВС)')
-                )
-                unique_id_modul = f'{entry_id}{control_id}-modul'
-                unit_modul = PERCENTAGE
-                sens.append(ZontSensorModul(
-                    coordinator, control_state, unique_id_modul, unit_modul,
-                    prefix='(модуляция)')
-                )
-                unique_id_press = f'{entry_id}{control_id}-press'
-                unit_press = UnitOfPressure.BAR
-                sens.append(ZontSensorPressBoiler(
-                    coordinator, control_state, unique_id_press, unit_press,
-                    prefix='(давление)')
-                )
-                unique_id_state = f'{entry_id}{control_id}-state'
-                unit_state = None
-                sens.append(ZontSensorState(
-                    coordinator, control_state, unique_id_state, unit_state,
-                    prefix='(состояние)')
-                )
+                if control_state.get(WS_KEY_WATER_BOILER) is not None:
+                    unique_id_water = (f'{entry_id}{control_id}'
+                                       f'-temperature_water')
+                    unit_water = UnitOfTemperature.CELSIUS
+                    sens.append(ZontSensorTemperatureWater(
+                        coordinator, control_state, unique_id_water,
+                        unit_water, prefix='(теплоноситель)')
+                    )
+                if control_state.get(WS_KEY_DHW_BOILER) is not None:
+                    unique_id_dhw = f'{entry_id}{control_id}-temperature_dhw'
+                    unit_dhw = UnitOfTemperature.CELSIUS
+                    sens.append(ZontSensorTemperatureDHW(
+                        coordinator, control_state, unique_id_dhw, unit_dhw,
+                        prefix='(ГВС)')
+                    )
+                if control_state.get(WS_KEY_MODUL_BOILER) is not None:
+                    unique_id_modul = f'{entry_id}{control_id}-modul'
+                    unit_modul = PERCENTAGE
+                    sens.append(ZontSensorModul(
+                        coordinator, control_state, unique_id_modul,
+                        unit_modul, prefix='(модуляция)')
+                    )
+                if control_state.get(WS_KEY_PRESS_BOILER) is not None:
+                    unique_id_press = f'{entry_id}{control_id}-press'
+                    unit_press = UnitOfPressure.BAR
+                    sens.append(ZontSensorPressBoiler(
+                        coordinator, control_state, unique_id_press,
+                        unit_press, prefix='(давление)')
+                    )
+                if control_state.get(WS_KEY_STATE_BOILER) is not None:
+                    unique_id_state = f'{entry_id}{control_id}-state'
+                    sens.append(ZontSensorState(
+                        coordinator, control_state, unique_id_state,
+                        prefix='(состояние)')
+                    )
                 unique_id_error = f'{entry_id}{control_id}-error'
-                unit_error = None
                 sens.append(ZontSensorErrorCode(
-                    coordinator, control_state, unique_id_error, unit_error,
+                    coordinator, control_state, unique_id_error,
                     prefix='(Код ошибки)')
                 )
         for sensor in sens:
@@ -96,7 +100,7 @@ class ZontSensor(CoordinatorEntity, SensorEntity):
                  coordinator: ZontCoordinator,
                  control_state: dict,
                  unique_id: str,
-                 unit: str,
+                 unit: str | None = None,
                  prefix: str = '') -> None:
         super().__init__(coordinator)
         self._coord = coordinator
