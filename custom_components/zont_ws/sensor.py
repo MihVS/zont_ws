@@ -16,7 +16,8 @@ from .const import (
     DOMAIN, CURRENT_ENTITY_IDS, ENTRIES, WS_KEY_ID, WS_KEY_TYPE, ZontType,
     WS_KEY_NAME, WS_KEY_TEMPERATURE, WS_KEY_WATER_BOILER, WS_KEY_DHW_BOILER,
     WS_KEY_MODUL_BOILER, WS_KEY_PRESS_BOILER, WS_KEY_STATE_BOILER,
-    WS_KEY_ERR_BOILER
+    WS_KEY_ERR_BOILER, WS_KEY_STYPE, ZONT_BINARY_SENSORS, ZONT_UNITS,
+    WS_KEY_UNIT, WS_KEY_VALUE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -86,6 +87,14 @@ async def async_setup_entry(
                     coordinator, control_state, unique_id_error,
                     prefix='(Код ошибки)')
                 )
+            case ZontType.ANALOG_INPUT:
+                if not control_state.get(WS_KEY_STYPE) in ZONT_BINARY_SENSORS:
+                    unique_id = f'{entry_id}{control_id}-analog'
+                    wet_unit = control_state.get(WS_KEY_UNIT)
+                    unit = ZONT_UNITS.get(wet_unit)
+                    sens.append(ZontSensorAnalog(
+                        coordinator, control_state, unique_id, unit)
+                    )
         for sensor in sens:
             hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
                 sensor.unique_id)
@@ -226,4 +235,13 @@ class ZontSensorErrorCode(ZontSensor):
         """Return the value reported by the sensor."""
         control_state = self._coord.data.get(self._control_id, {})
         return control_state.get(WS_KEY_ERR_BOILER)
+
+
+class ZontSensorAnalog(ZontSensor):
+
+    @property
+    def native_value(self) -> float | str:
+        """Return the value reported by the sensor."""
+        control_state = self._coord.data.get(self._control_id, {})
+        return control_state.get(WS_KEY_VALUE)
 

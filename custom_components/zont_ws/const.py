@@ -1,3 +1,8 @@
+from homeassistant.const import (
+    UnitOfElectricPotential, UnitOfPressure, UnitOfSpeed,
+    REVOLUTIONS_PER_MINUTE, UnitOfVolume, UnitOfVolumeFlowRate, PERCENTAGE
+)
+
 DOMAIN = 'zont_ws'
 MANUFACTURER = 'MicroLine'
 CONFIGURATION_URL = 'https://my.zont.online/'
@@ -49,6 +54,8 @@ WS_KEY_MODUL_BOILER = 'modul'
 WS_KEY_PRESS_BOILER = 'press'
 WS_KEY_STATE_BOILER = 'state'
 WS_KEY_ERR_BOILER = 'err'
+WS_KEY_UNIT = 'u'
+WS_KEY_VALUE = 'v'
 
 COMMAND_ON = 1
 COMMAND_OFF = 0
@@ -144,4 +151,16 @@ HEATING_MODES = {
     'дома': 'mdi:home-outline',
     'не дома': 'mdi:home-off-outline',
     'гвс': 'mdi:water-boiler',
+}
+
+ZONT_UNITS = {
+    0: UnitOfElectricPotential.VOLT,
+    1: 'kΩ',
+    2: UnitOfPressure.BAR,
+    3: UnitOfSpeed.KILOMETERS_PER_HOUR,
+    4: REVOLUTIONS_PER_MINUTE,
+    5: UnitOfVolume.LITERS,
+    6: UnitOfVolumeFlowRate.LITERS_PER_HOUR,
+    7: PERCENTAGE,
+    8: None,
 }
