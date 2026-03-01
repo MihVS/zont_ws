@@ -7,6 +7,7 @@
 
 
 [![Donate](https://img.shields.io/badge/Donate-T%E2%80%91Bank-yellow?logo=tinymce&logoColor=white)](https://www.tinkoff.ru/rm/shutov.mikhail19/wUyu873109)
+[![Donate](https://img.shields.io/badge/Donate-sber-green?logo=tinymce&logoColor=white)](https://www.sberbank.com/sms/pbpn?requisiteNumber=79123723304)
 
 ## Описание
 Компонент для локального управления устройствами [ZONT](https://zont-online.ru/) из Home Assistant. 
