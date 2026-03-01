@@ -56,6 +56,9 @@ WS_KEY_STATE_BOILER = 'state'
 WS_KEY_ERR_BOILER = 'err'
 WS_KEY_UNIT = 'u'
 WS_KEY_VALUE = 'v'
+WS_KEY_HUMIDITY = 'h'
+WS_KEY_BATTERY = 'b'
+WS_KEY_RSSI = 'r'
 
 COMMAND_ON = 1
 COMMAND_OFF = 0
@@ -77,6 +80,30 @@ class ZontType:
     MODE = 20
     NTC_TEMP_SENSOR = 27
     ANY = 255
+
+
+class RadioType:
+    """Subtypes for radio sensor."""
+
+    REMOTE_3_BUTTON = 2
+    REMOTE_4_BUTTON = 3
+    RADIO_RELAY_LOCK = 4
+    RADIO_THERMOMETER = 5
+    RADIO_DUCT = 6
+    HOOD_MODULE = 7
+    RADIO_TAG = 8
+    LEAK_SENSOR = 10
+    MOTION_SENSOR = 11
+    SHOCK_SENSOR = 12
+    MULTI_THERMOMETER = 13
+    POWER_METER = 14
+    EXTERNAL_TEMP_SENSOR = 15
+    WATER_GAS_METER = 16
+    RADIO_SOCKET_220V = 17
+    TEMP_HUMIDITY_SENSOR = 18
+    TAG_ACCELEROMETER = 19
+    TAG_BATTERY = 20
+    RADIO_PANEL = 23
 
 
 class ZontWebElmType:
@@ -163,4 +190,15 @@ ZONT_UNITS = {
     6: UnitOfVolumeFlowRate.LITERS_PER_HOUR,
     7: PERCENTAGE,
     8: None,
+}
+
+PERCENT_BATTERY = {
+    3.0: 95,
+    2.9: 80,
+    2.8: 65,
+    2.7: 50,
+    2.6: 35,
+    2.5: 20,
+    2.4: 10,
+    2.3: 5
 }
