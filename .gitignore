@@ -13,3 +13,5 @@ scripts.yaml
 secrets.yaml
 __pycache__
 /custom_components/zont_ws/temp_data/
+
+.DS_Store
