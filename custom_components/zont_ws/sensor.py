@@ -6,7 +6,8 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    UnitOfTemperature, PERCENTAGE, UnitOfPressure
+    UnitOfTemperature, PERCENTAGE, UnitOfPressure,
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -20,7 +21,7 @@ from .const import (
     WS_KEY_MODUL_BOILER, WS_KEY_PRESS_BOILER, WS_KEY_STATE_BOILER,
     WS_KEY_ERR_BOILER, WS_KEY_STYPE, ZONT_BINARY_SENSORS, ZONT_UNITS,
     WS_KEY_UNIT, WS_KEY_VALUE, PERCENT_BATTERY, WS_KEY_HUMIDITY,
-    WS_KEY_BATTERY, ZontAnalogType
+    WS_KEY_BATTERY, ZontAnalogType, RadioType, WS_KEY_RSSI
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,12 +44,14 @@ async def async_setup_entry(
         match type_control:
             case ZontType.NTC_TEMP_SENSOR | ZontType.DS18_TEMP_SENSOR:
                 coordinator.ids_for_update.append(control_id)
+
                 unique_id = f'{entry_id}{control_id}-temperature'
                 sens.append(ZontSensorTemperature(
                     coordinator, control_state, unique_id)
                 )
             case ZontType.CSH_ADAPTER:
                 coordinator.ids_for_update.append(control_id)
+
                 if control_state.get(WS_KEY_WATER_BOILER) is not None:
                     unique_id_water = (f'{entry_id}{control_id}'
                                        f'-temperature_water')
@@ -87,13 +90,61 @@ async def async_setup_entry(
                 )
             case ZontType.ANALOG_INPUT:
                 coordinator.ids_for_update.append(control_id)
+
                 if not control_state.get(WS_KEY_STYPE) in ZONT_BINARY_SENSORS:
                     unique_id = f'{entry_id}{control_id}-analog'
                     sens.append(ZontSensorAnalog(
                         coordinator, control_state, unique_id)
                     )
             case ZontType.RADIO_SENSOR:
-                pass
+                type_radio_sensor = control_state.get(WS_KEY_STYPE)
+                match type_radio_sensor:
+                    case RadioType.RADIO_THERMOMETER | RadioType.EXTERNAL_TEMP_SENSOR:
+                        coordinator.ids_for_update.append(control_id)
+
+                        unique_id_temp = f'{entry_id}{control_id}-temperature'
+                        sens.append(ZontSensorTemperature(
+                            coordinator, control_state, unique_id_temp)
+                        )
+                        unique_id_bat = f'{entry_id}{control_id}-battery'
+                        sens.append(ZontSensorBattery(
+                            coordinator, control_state, unique_id_bat)
+                        )
+                        unique_id_rssi = f'{entry_id}{control_id}-rssi'
+                        sens.append(ZontSensorRSSI(
+                            coordinator, control_state, unique_id_rssi)
+                        )
+                    case RadioType.TEMP_HUMIDITY_SENSOR:
+                        coordinator.ids_for_update.append(control_id)
+
+                        unique_id_temp = f'{entry_id}{control_id}-temperature'
+                        sens.append(ZontSensorTemperature(
+                            coordinator, control_state, unique_id_temp)
+                        )
+                        coordinator.ids_for_update.append(control_id)
+                        unique_id_humi = f'{entry_id}{control_id}-humidity'
+                        sens.append(ZontSensorHumidity(
+                            coordinator, control_state, unique_id_humi)
+                        )
+                        unique_id_bat = f'{entry_id}{control_id}-battery'
+                        sens.append(ZontSensorBattery(
+                            coordinator, control_state, unique_id_bat)
+                        )
+                        unique_id_rssi = f'{entry_id}{control_id}-rssi'
+                        sens.append(ZontSensorRSSI(
+                            coordinator, control_state, unique_id_rssi)
+                        )
+                    case RadioType.LEAK_SENSOR | RadioType.MOTION_SENSOR:
+                        coordinator.ids_for_update.append(control_id)
+
+                        unique_id_bat = f'{entry_id}{control_id}-battery'
+                        sens.append(ZontSensorBattery(
+                            coordinator, control_state, unique_id_bat)
+                        )
+                        unique_id_rssi = f'{entry_id}{control_id}-rssi'
+                        sens.append(ZontSensorRSSI(
+                            coordinator, control_state, unique_id_rssi)
+                        )
 
         for sensor in sens:
             hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
@@ -270,7 +321,7 @@ class ZontSensorHumidity(ZontSensorMeasurement):
         return SensorDeviceClass.HUMIDITY
 
 
-class ZontSensorBattery(ZontSensor):
+class ZontSensorBattery(ZontSensorMeasurement):
 
     _key_value = WS_KEY_BATTERY
 
@@ -300,4 +351,19 @@ class ZontSensorBattery(ZontSensor):
     def device_class(self) -> SensorDeviceClass | None:
         """Return the class of this entity."""
         return SensorDeviceClass.BATTERY
+
+
+class ZontSensorRSSI(ZontSensorMeasurement):
+
+    _key_value = WS_KEY_RSSI
+
+    @cached_property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of measurement of the sensor, if any."""
+        return SIGNAL_STRENGTH_DECIBELS_MILLIWATT
+
+    @cached_property
+    def device_class(self) -> SensorDeviceClass | None:
+        """Return the class of this entity."""
+        return SensorDeviceClass.SIGNAL_STRENGTH
 
