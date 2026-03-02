@@ -86,6 +86,7 @@ async def async_setup_entry(
                     prefix='(Код ошибки)')
                 )
             case ZontType.ANALOG_INPUT:
+                coordinator.ids_for_update.append(control_id)
                 if not control_state.get(WS_KEY_STYPE) in ZONT_BINARY_SENSORS:
                     unique_id = f'{entry_id}{control_id}-analog'
                     sens.append(ZontSensorAnalog(
