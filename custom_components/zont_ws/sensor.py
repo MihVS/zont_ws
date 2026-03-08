@@ -335,9 +335,9 @@ class ZontSensorBattery(ZontSensorMeasurement):
     def _convert_value_battery(value: float) -> int:
         """Converts the battery voltage to the charge level in %."""
         value = round(value, 1)
-        if value > 3.0:
+        if value > 3.1:
             return 100
-        elif value < 2.2:
+        elif value < 2.1:
             return 0
         else:
             return PERCENT_BATTERY[value]
@@ -366,4 +366,10 @@ class ZontSensorRSSI(ZontSensorMeasurement):
     def device_class(self) -> SensorDeviceClass | None:
         """Return the class of this entity."""
         return SensorDeviceClass.SIGNAL_STRENGTH
+
+    @property
+    def native_value(self) -> float | str:
+        """Return the value reported by the sensor."""
+        value = self.get_value()
+        return value / 2 - 73
 
