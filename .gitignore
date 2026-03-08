@@ -3,6 +3,7 @@
 /blueprints
 /.deps
 /.tts
+/.cache
 .ha_run.lock
 .HA_VERSION
 automations.yaml
