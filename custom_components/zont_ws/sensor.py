@@ -21,7 +21,7 @@ from .const import (
     WS_KEY_MODUL_BOILER, WS_KEY_PRESS_BOILER, WS_KEY_STATE_BOILER,
     WS_KEY_ERR_BOILER, WS_KEY_STYPE, ZONT_BINARY_SENSORS, ZONT_UNITS,
     WS_KEY_UNIT, WS_KEY_VALUE, PERCENT_BATTERY, WS_KEY_HUMIDITY,
-    WS_KEY_BATTERY, ZontAnalogType, RadioType, WS_KEY_RSSI
+    WS_KEY_BATTERY, ZontAnalogType, RadioType, WS_KEY_RSSI, WS_KEY_AVAILABLE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -193,6 +193,16 @@ class ZontSensor(CoordinatorEntity, SensorEntity):
     def native_value(self) -> float | str:
         """Return the value reported by the sensor."""
         return self.get_value()
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        control_state = self._coord.data.get(self._control_id)
+        is_available = control_state.get(WS_KEY_AVAILABLE)
+        if is_available is not None:
+            return bool(control_state.get(WS_KEY_AVAILABLE))
+        else:
+            return self.coordinator.last_update_success
 
 
 class ZontSensorMeasurement(ZontSensor):

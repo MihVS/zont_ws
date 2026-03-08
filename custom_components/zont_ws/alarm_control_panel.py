@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import ZontCoordinator
 from .const import (
     DOMAIN, CURRENT_ENTITY_IDS, ENTRIES, WS_KEY_ID, WS_KEY_TYPE, ZontType,
-    WS_KEY_NAME, WS_KET_TRIGGERED, WS_KEY_STATE, COMMAND_ON, COMMAND_OFF,
+    WS_KEY_NAME, WS_KEY_TRIGGERED, WS_KEY_STATE, COMMAND_ON, COMMAND_OFF,
     COUNTER_REPEAT, TIME_OUT_REPEAT
 )
 
@@ -91,7 +91,7 @@ class ZontAlarm(CoordinatorEntity, AlarmControlPanelEntity):
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
         control_state = self._coord.data.get(self._control_id, {})
-        if control_state.get(WS_KET_TRIGGERED):
+        if control_state.get(WS_KEY_TRIGGERED):
             return AlarmControlPanelState.TRIGGERED
         if self._is_enabling:
             return AlarmControlPanelState.ARMING

@@ -47,7 +47,7 @@ WS_KEY_SERVICE_CMD_RESULT = 'scmdres'
 WS_KEY_TEMPERATURE = 't'
 WS_KEY_AVAILABLE = 'a'
 WS_KEY_FAILED = 'failed'
-WS_KET_TRIGGERED = 'trig'
+WS_KEY_TRIGGERED = 'trig'
 WS_KEY_WATER_BOILER = 'water'
 WS_KEY_DHW_BOILER = 'dhw'
 WS_KEY_MODUL_BOILER = 'modul'
@@ -104,6 +104,9 @@ class RadioType:
     TAG_ACCELEROMETER = 19
     TAG_BATTERY = 20
     RADIO_PANEL = 23
+
+
+ZONT_BINARY_SENSORS_RDIO = (RadioType.LEAK_SENSOR, RadioType.MOTION_SENSOR, )
 
 
 class ZontWebElmType:

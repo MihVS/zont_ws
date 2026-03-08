@@ -11,7 +11,8 @@ from . import ZontCoordinator
 from .const import (
     DOMAIN, CURRENT_ENTITY_IDS, ENTRIES, WS_KEY_TYPE, ZontType, WS_KEY_STYPE,
     ZontWebElmType, WS_KEY_ID, WS_KEY_NAME, WS_KEY_STATE, ZontAnalogType,
-    WS_KET_TRIGGERED, ZONT_BINARY_SENSORS, WS_KEY_AVAILABLE
+    WS_KEY_TRIGGERED, ZONT_BINARY_SENSORS, WS_KEY_AVAILABLE,
+    ZONT_BINARY_SENSORS_RDIO, RadioType
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -45,6 +46,14 @@ async def async_setup_entry(
                 if type_analog in ZONT_BINARY_SENSORS:
                     coordinator.ids_for_update.append(control_id)
                     unique_id = f'{entry_id}{control_id}-binary_analog'
+                    binary_sensors.append(ZontBinarySensorAnalog(
+                        coordinator, control_state, unique_id)
+                    )
+            case ZontType.RADIO_SENSOR:
+                type_radio_sensor = control_state.get(WS_KEY_STYPE)
+                if type_radio_sensor in ZONT_BINARY_SENSORS_RDIO:
+                    coordinator.ids_for_update.append(control_id)
+                    unique_id = f'{entry_id}{control_id}-binary_radio'
                     binary_sensors.append(ZontBinarySensorAnalog(
                         coordinator, control_state, unique_id)
                     )
@@ -85,13 +94,33 @@ class ZontBinarySensor(CoordinatorEntity, BinarySensorEntity):
         if control_state:
             return bool(control_state.get(WS_KEY_STATE))
 
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        control_state = self._coord.data.get(self._control_id)
+        is_available = control_state.get(WS_KEY_AVAILABLE)
+        if is_available is not None:
+            return bool(control_state.get(WS_KEY_AVAILABLE))
+        else:
+            return self.coordinator.last_update_success
+
     def __repr__(self) -> str:
         if not self.hass:
             return f"<Binary sensor entity {self.name}>"
         return super().__repr__()
 
 
-class ZontBinarySensorAnalog(ZontBinarySensor):
+class ZontBinarySensorExtension(ZontBinarySensor):
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the binary sensor is on."""
+        control_state = self._coord.data.get(self._control_id)
+        if control_state:
+            return bool(control_state.get(WS_KEY_TRIGGERED))
+
+
+class ZontBinarySensorAnalog(ZontBinarySensorExtension):
 
     @property
     def device_class(self) -> BinarySensorDeviceClass | None:
@@ -110,15 +139,18 @@ class ZontBinarySensorAnalog(ZontBinarySensor):
             case _:
                 return None
 
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the binary sensor is on."""
-        control_state = self._coord.data.get(self._control_id)
-        if control_state:
-            return bool(control_state.get(WS_KET_TRIGGERED))
+
+class ZontBinarySensorRadio(ZontBinarySensorExtension):
 
     @property
-    def available(self) -> bool:
-        """Return True if entity is available."""
+    def device_class(self) -> BinarySensorDeviceClass | None:
+        """Return the class of this entity."""
         control_state = self._coord.data.get(self._control_id)
-        return bool(control_state.get(WS_KEY_AVAILABLE))
+        type_radio = control_state.get(WS_KEY_STYPE)
+        match type_radio:
+            case RadioType.LEAK_SENSOR:
+                return BinarySensorDeviceClass.MOISTURE
+            case RadioType.MOTION_SENSOR:
+                return BinarySensorDeviceClass.MOTION
+            case _:
+                return None
