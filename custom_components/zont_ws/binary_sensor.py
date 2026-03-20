@@ -11,7 +11,7 @@ from . import ZontCoordinator
 from .const import (
     DOMAIN, CURRENT_ENTITY_IDS, ENTRIES, WS_KEY_TYPE, ZontType, WS_KEY_STYPE,
     ZontWebElmType, WS_KEY_ID, WS_KEY_NAME, WS_KEY_STATE, ZontAnalogType,
-    WS_KEY_TRIGGERED, ZONT_BINARY_SENSORS, WS_KEY_AVAILABLE,
+    WS_KEY_TRIGGERED, ZONT_BINARY_SENSORS, WS_KEY_AVAILABLE, WS_KEY_FAILURE,
     ZONT_BINARY_SENSORS_RDIO, RadioType
 )
 
@@ -33,6 +33,13 @@ async def async_setup_entry(
             continue
         type_control = control_state.get(WS_KEY_TYPE)
         match type_control:
+            case ZontType.HEATING_CIRCUIT:
+                coordinator.ids_for_update.append(control_id)
+                unique_id = f'{entry_id}{control_id}-failure'
+                binary_sensors.append(ZontBinarySensorFailure(
+                    coordinator, control_state, unique_id,
+                    prefix='(Авария)')
+                )
             case ZontType.WEB_ELEMENT:
                 type_web_elm = control_state.get(WS_KEY_STYPE)
                 if type_web_elm == ZontWebElmType.BINARY:
@@ -67,15 +74,17 @@ async def async_setup_entry(
 
 class ZontBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
+    _key_value = WS_KEY_STATE
+
     def __init__(self,
                  coordinator: ZontCoordinator,
                  control_state: dict,
                  unique_id: str,
-    ) -> None:
+                 prefix: str = '') -> None:
         super().__init__(coordinator)
         self._coord = coordinator
         self._control_id = control_state.get(WS_KEY_ID)
-        self._name = control_state.get(WS_KEY_NAME)
+        self._name = control_state.get(WS_KEY_NAME) + prefix
         self._unique_id = unique_id
         self._attr_device_info = coordinator.get_devices_info()
 
@@ -92,7 +101,7 @@ class ZontBinarySensor(CoordinatorEntity, BinarySensorEntity):
         """Return true if the binary sensor is on."""
         control_state = self._coord.data.get(self._control_id)
         if control_state:
-            return bool(control_state.get(WS_KEY_STATE))
+            return bool(control_state.get(self._key_value))
 
     @property
     def available(self) -> bool:
@@ -108,6 +117,11 @@ class ZontBinarySensor(CoordinatorEntity, BinarySensorEntity):
         if not self.hass:
             return f"<Binary sensor entity {self.name}>"
         return super().__repr__()
+
+
+class ZontBinarySensorFailure(ZontBinarySensor):
+
+    _key_value = WS_KEY_FAILURE
 
 
 class ZontBinarySensorExtension(ZontBinarySensor):
