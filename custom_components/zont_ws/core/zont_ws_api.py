@@ -9,8 +9,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .exceptions import ZontAuthError, ZontWsError, ZontUrlError, ZontInitError
 from ..const import (
     WS_TIMEOUT_REQUEST, HEARTBEAT, WS_KEY_USER, WS_KEY_AUTH, WS_KEY_IDS,
-    WS_KEY_REQUEST_IDS, WS_KEY_ID, WS_KEY_REQUEST_STATE, WS_KEY_CMD,
-     WS_KEY_SERVICE_CMD, WS_KEY_PASS, WS_KEY_FAILED, TIMEOUT_RECONNECT
+    WS_KEY_REQUEST_IDS, WS_KEY_ID, WS_KEY_REQUEST_STATE, WS_KEY_CMD, WS_KEY_SYSTEM_INFO,
+     WS_KEY_SERVICE_CMD, WS_KEY_PASS, WS_KEY_FAILED, TIMEOUT_RECONNECT, KEYS_SYSTEM_INFO, WS_KEY_SERVICE_CMD_RESULT
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -168,9 +168,10 @@ class ZontWsApi:
             _LOGGER.error(f'Host: {self._host}. Init failed.')
             raise ZontInitError('Could not get ids.')
 
-        await self.send_system_command()
+        await self.send_system_command(WS_KEY_SYSTEM_INFO)
         for control_id in data[WS_KEY_IDS]:
             await self.get_state(control_id)
+        await self.send_get_system_info()
 
         deadline = asyncio.get_running_loop().time() + 5
 
@@ -184,6 +185,8 @@ class ZontWsApi:
             control_data = msg.json()
             if WS_KEY_FAILED in control_data:
                 continue
+            if self.has_formated_system_info(data, control_data):
+                _LOGGER.debug(f'Init system data updated by {control_data}')
             if WS_KEY_ID in control_data:
                 data.update({control_data[WS_KEY_ID]: control_data})
                 _LOGGER.debug(f'Init data updated by '
@@ -192,6 +195,14 @@ class ZontWsApi:
                 data.update(control_data)
                 _LOGGER.debug(f'Init data updated by {control_data}')
         return data
+
+    def has_formated_system_info(self, result: dict, control_data) -> bool:
+        if WS_KEY_SERVICE_CMD_RESULT in control_data:
+            key, vals = control_data[WS_KEY_SERVICE_CMD_RESULT].split(':', 1)
+            result.update({key: {i: (int(v) if v.isdigit() else v) for i, v in enumerate(vals.split())}})
+            return True
+        else:
+            return False
 
     async def get_ids(self, obj_type: str = 255):
         """Request list of object IDs."""
@@ -206,6 +217,9 @@ class ZontWsApi:
         """Send command to object."""
         return await self.send_message({WS_KEY_ID: obj_id, WS_KEY_CMD: cmd,})
 
-    async def send_system_command(self):
-        """Send system command (#S7?)."""
-        await self.send_message({WS_KEY_SERVICE_CMD: '#S7?'})
+    async def send_get_system_info(self):
+        for element in KEYS_SYSTEM_INFO:
+            await self.send_system_command(element)
+
+    async def send_system_command(self, command: str):
+        await self.send_message({WS_KEY_SERVICE_CMD: f"{command}?"})

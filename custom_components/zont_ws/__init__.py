@@ -14,7 +14,7 @@ from homeassistant.helpers.update_coordinator import (
 from .const import (
     DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL,
     CURRENT_ENTITY_IDS, WS_KEY_TYPE, ZontType, MODE_BOILER_NAMES, WS_KEY_NAME,
-    WS_KEY_SERVICE_CMD_RESULT, WS_KEY_ID, WS_KEY_CMD_RESULT, WS_KEY_IDS,
+    WS_KEY_SYSTEM_INFO, WS_KEY_ID, WS_KEY_CMD_RESULT, WS_KEY_IDS,
 )
 from .core.exceptions import ZontInitError, ZontWsError
 from .core.zont_data import ZontDeviceInfo
@@ -123,19 +123,20 @@ class ZontCoordinator(DataUpdateCoordinator):
         _LOGGER.debug(f'{self.zont_ws_api.url}. ZONT Message <= {data}')
         if WS_KEY_CMD_RESULT in data:
             return
-        if WS_KEY_ID in data:
+        if self.zont_ws_api.has_formated_system_info(self.data, data):
+            pass
+        elif WS_KEY_ID in data:
             self.data.update({data[WS_KEY_ID]: data})
         else:
             self.data.update(data)
         self.async_set_updated_data(self.data)
 
     def get_devices_info(self):
-        zont_info = self.data.get(WS_KEY_SERVICE_CMD_RESULT)
+        zont_info = self.data.get(WS_KEY_SYSTEM_INFO)
         if zont_info:
-            (
-                self.zont_info.model,
-                self.zont_info.hardware,
-                self.zont_info.software) = zont_info.split(':')[1].split(' ')
+            self.zont_info.model = zont_info.get(0, '')
+            self.zont_info.hardware = zont_info.get(1, '')
+            self.zont_info.software = zont_info.get(2, '')
 
         device_info = DeviceInfo(**{
             "identifiers": {(DOMAIN, self.zont_ws_api.name)},
@@ -181,6 +182,7 @@ class ZontCoordinator(DataUpdateCoordinator):
         try:
             for control_id in self.ids_for_update:
                 await self.zont_ws_api.get_state(control_id)
+            await self.zont_ws_api.send_get_system_info()
         except ZontWsError:
             _LOGGER.warning(f'Waiting connect to zont ({self.zont_ws_api.url})...')
         _LOGGER.info(f'Finish polling the controller.')

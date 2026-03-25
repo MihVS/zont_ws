@@ -21,7 +21,7 @@ from .const import (
     WS_KEY_MODUL_BOILER, WS_KEY_PRESS_BOILER, WS_KEY_STATE_BOILER,
     WS_KEY_ERR_BOILER, WS_KEY_STYPE, ZONT_BINARY_SENSORS, ZONT_UNITS,
     WS_KEY_UNIT, WS_KEY_VALUE, PERCENT_BATTERY, WS_KEY_HUMIDITY,
-    WS_KEY_BATTERY, ZontAnalogType, RadioType, WS_KEY_RSSI, WS_KEY_AVAILABLE
+    WS_KEY_BATTERY, ZontAnalogType, RadioType, WS_KEY_RSSI, WS_KEY_AVAILABLE, WS_KEY_WIFI_INFO
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,6 +41,16 @@ async def async_setup_entry(
         if not isinstance(control_state, dict):
             continue
         type_control = control_state.get(WS_KEY_TYPE)
+
+        if control_id == WS_KEY_WIFI_INFO:
+            coordinator.ids_for_update.append(control_id)
+            if control_state.get(1) is not None:
+                unique_id = f'{entry_id}-wifi-signal'
+                sens.append(ZontSensorWiFiSignal(
+                    coordinator, control_state, unique_id, 'WiFi(Уровень сигнала)',
+                    WS_KEY_WIFI_INFO, 1)
+                )
+
         match type_control:
             case ZontType.NTC_TEMP_SENSOR | ZontType.DS18_TEMP_SENSOR:
                 coordinator.ids_for_update.append(control_id)
@@ -162,12 +172,16 @@ class ZontSensor(CoordinatorEntity, SensorEntity):
                  coordinator: ZontCoordinator,
                  control_state: dict,
                  unique_id: str,
-                 prefix: str = '') -> None:
+                 prefix: str = '',
+                 control_id = None,
+                 key_value = None,
+                 ) -> None:
         super().__init__(coordinator)
         self._coord = coordinator
-        self._control_id = control_state.get(WS_KEY_ID)
+        self._control_id = control_id if control_id is not None else control_state.get(WS_KEY_ID)
+        self._key_value = key_value if key_value is not None else self._key_value
         self._control_state = control_state
-        self._name = control_state.get(WS_KEY_NAME) + prefix
+        self._name = control_state.get(WS_KEY_NAME, '') + prefix
         self._unique_id = unique_id
         self._attr_device_info = coordinator.get_devices_info()
 
@@ -203,7 +217,6 @@ class ZontSensor(CoordinatorEntity, SensorEntity):
             return bool(control_state.get(WS_KEY_AVAILABLE))
         else:
             return self.coordinator.last_update_success
-
 
 class ZontSensorMeasurement(ZontSensor):
 
@@ -383,3 +396,20 @@ class ZontSensorRSSI(ZontSensorMeasurement):
         value = self.get_value()
         return value / 2 - 73
 
+
+class ZontSensorWiFiSignal(ZontSensorMeasurement):
+    @cached_property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of measurement of the sensor, if any."""
+        return SIGNAL_STRENGTH_DECIBELS_MILLIWATT
+
+    @cached_property
+    def device_class(self) -> SensorDeviceClass | None:
+        """Return the class of this entity."""
+        return SensorDeviceClass.SIGNAL_STRENGTH
+
+    @property
+    def native_value(self) -> float | str:
+        """Return the value reported by the sensor."""
+        value = self.get_value()
+        return f"-{value}"
