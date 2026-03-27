@@ -156,7 +156,7 @@ async def async_setup_entry(
 
 class ZontSensor(CoordinatorEntity, SensorEntity):
 
-    _key_value = WS_KEY_VALUE
+    _ws_key = WS_KEY_VALUE
 
     def __init__(self,
                  coordinator: ZontCoordinator,
@@ -187,7 +187,7 @@ class ZontSensor(CoordinatorEntity, SensorEntity):
 
     def get_value(self) -> int | float | str:
         control_state = self._coord.data.get(self._control_id, {})
-        return control_state.get(self._key_value)
+        return control_state.get(self._ws_key)
 
     @property
     def native_value(self) -> float | str:
@@ -215,7 +215,7 @@ class ZontSensorMeasurement(ZontSensor):
 
 class ZontSensorTemperature(ZontSensorMeasurement):
 
-    _key_value = WS_KEY_TEMPERATURE
+    _ws_key = WS_KEY_TEMPERATURE
 
     @cached_property
     def native_unit_of_measurement(self) -> str | None:
@@ -230,18 +230,18 @@ class ZontSensorTemperature(ZontSensorMeasurement):
 
 class ZontSensorTemperatureWater(ZontSensorTemperature):
 
-    _key_value = WS_KEY_WATER_BOILER
+    _ws_key = WS_KEY_WATER_BOILER
 
 
 class ZontSensorTemperatureDHW(ZontSensorTemperature):
 
-    _key_value = WS_KEY_DHW_BOILER
+    _ws_key = WS_KEY_DHW_BOILER
 
 
 class ZontSensorModul(ZontSensorMeasurement):
 
     _attr_icon = 'mdi:fire'
-    _key_value = WS_KEY_MODUL_BOILER
+    _ws_key = WS_KEY_MODUL_BOILER
 
     @cached_property
     def native_unit_of_measurement(self) -> str | None:
@@ -251,7 +251,7 @@ class ZontSensorModul(ZontSensorMeasurement):
 
 class ZontSensorPressBoiler(ZontSensorMeasurement):
 
-    _key_value = WS_KEY_PRESS_BOILER
+    _ws_key = WS_KEY_PRESS_BOILER
 
     @cached_property
     def native_unit_of_measurement(self) -> str | None:
@@ -267,7 +267,7 @@ class ZontSensorPressBoiler(ZontSensorMeasurement):
 class ZontSensorState(ZontSensor):
 
     _attr_icon = 'mdi:water-boiler'
-    _key_value = WS_KEY_STATE_BOILER
+    _ws_key = WS_KEY_STATE_BOILER
 
     @property
     def native_value(self) -> float | str:
@@ -285,12 +285,12 @@ class ZontSensorState(ZontSensor):
 class ZontSensorErrorCode(ZontSensor):
 
     _attr_icon = 'mdi:wrench-outline'
-    _key_value = WS_KEY_ERR_BOILER
+    _ws_key = WS_KEY_ERR_BOILER
 
 
 class ZontSensorAnalog(ZontSensorMeasurement):
 
-    _key_value = WS_KEY_VALUE
+    _ws_key = WS_KEY_VALUE
 
     @cached_property
     def native_unit_of_measurement(self) -> str | None:
@@ -318,7 +318,7 @@ class ZontSensorAnalog(ZontSensorMeasurement):
 
 class ZontSensorHumidity(ZontSensorMeasurement):
 
-    _key_value = WS_KEY_HUMIDITY
+    _ws_key = WS_KEY_HUMIDITY
 
     @cached_property
     def native_unit_of_measurement(self) -> str | None:
@@ -333,7 +333,7 @@ class ZontSensorHumidity(ZontSensorMeasurement):
 
 class ZontSensorBattery(ZontSensorMeasurement):
 
-    _key_value = WS_KEY_BATTERY
+    _ws_key = WS_KEY_BATTERY
 
     @property
     def native_value(self) -> float | str:
@@ -365,7 +365,7 @@ class ZontSensorBattery(ZontSensorMeasurement):
 
 class ZontSensorRSSI(ZontSensorMeasurement):
 
-    _key_value = WS_KEY_RSSI
+    _ws_key = WS_KEY_RSSI
 
     @cached_property
     def native_unit_of_measurement(self) -> str | None:
