@@ -74,7 +74,7 @@ async def async_setup_entry(
 
 class ZontBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
-    _key_value = WS_KEY_STATE
+    _ws_key = WS_KEY_STATE
 
     def __init__(self,
                  coordinator: ZontCoordinator,
@@ -101,7 +101,7 @@ class ZontBinarySensor(CoordinatorEntity, BinarySensorEntity):
         """Return true if the binary sensor is on."""
         control_state = self._coord.data.get(self._control_id)
         if control_state:
-            return bool(control_state.get(self._key_value))
+            return bool(control_state.get(self._ws_key))
 
     @property
     def available(self) -> bool:
@@ -121,17 +121,13 @@ class ZontBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
 class ZontBinarySensorFailure(ZontBinarySensor):
 
-    _key_value = WS_KEY_FAILURE
+    _ws_key = WS_KEY_FAILURE
+    _attr_icon = 'mdi:wrench'
 
 
 class ZontBinarySensorExtension(ZontBinarySensor):
 
-    @property
-    def is_on(self) -> bool | None:
-        """Return true if the binary sensor is on."""
-        control_state = self._coord.data.get(self._control_id)
-        if control_state:
-            return bool(control_state.get(WS_KEY_TRIGGERED))
+    _ws_key = WS_KEY_TRIGGERED
 
 
 class ZontBinarySensorAnalog(ZontBinarySensorExtension):
