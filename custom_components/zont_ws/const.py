@@ -83,6 +83,18 @@ class ZontType:
     ANY = 255
 
 
+class ZontSysCommand:
+    """System commands."""
+
+    DATE = 'SDATE?'
+    RESTART = 'SRESTART?'
+    SERIAL_NUMBER = '#S54?'
+    DEVICE_INFO = '#S7?'
+    GSM_INFO = '#S4?'
+    NETWORK_INFO = '#S205?'
+    WIFI_INFO = '#S198?'
+
+
 class RadioType:
     """Subtypes for radio sensor."""
 

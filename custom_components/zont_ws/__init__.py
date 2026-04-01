@@ -1,15 +1,12 @@
-import asyncio
-import json
 import logging
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_registry import async_get
 from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator, UpdateFailed
+    DataUpdateCoordinator
 )
 from .const import (
     DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL,
@@ -18,9 +15,7 @@ from .const import (
 )
 from .core.exceptions import ZontInitError, ZontWsError
 from .core.zont_data import ZontDeviceInfo
-
 from .core.zont_ws_api import ZontWsApi
-
 
 _LOGGER = logging.getLogger(__name__)
 

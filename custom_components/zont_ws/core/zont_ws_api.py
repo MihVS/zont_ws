@@ -10,7 +10,8 @@ from .exceptions import ZontAuthError, ZontWsError, ZontUrlError, ZontInitError
 from ..const import (
     WS_TIMEOUT_REQUEST, HEARTBEAT, WS_KEY_USER, WS_KEY_AUTH, WS_KEY_IDS,
     WS_KEY_REQUEST_IDS, WS_KEY_ID, WS_KEY_REQUEST_STATE, WS_KEY_CMD,
-     WS_KEY_SERVICE_CMD, WS_KEY_PASS, WS_KEY_FAILED, TIMEOUT_RECONNECT
+    WS_KEY_SERVICE_CMD, WS_KEY_PASS, WS_KEY_FAILED, TIMEOUT_RECONNECT,
+    ZontSysCommand
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -139,7 +140,7 @@ class ZontWsApi:
         self._ws = None
         _LOGGER.debug(f'WS closed. Host: {self._host}')
 
-    async def send_message(self, payload: dict[str, Any]):
+    async def send_message(self, payload: dict[str, str | int]):
         async with self._lock:
             if not self._connected:
                 _LOGGER.error(f'WS not connected. Host: {self._host}')
@@ -168,7 +169,7 @@ class ZontWsApi:
             _LOGGER.error(f'Host: {self._host}. Init failed.')
             raise ZontInitError('Could not get ids.')
 
-        await self.send_system_command()
+        await self.send_system_command(ZontSysCommand.DEVICE_INFO)
         for control_id in data[WS_KEY_IDS]:
             await self.get_state(control_id)
 
@@ -202,10 +203,10 @@ class ZontWsApi:
         _LOGGER.debug(f'Host: {self._host}. Get state for id: {obj_id}')
         await self.send_message({WS_KEY_ID: obj_id, WS_KEY_REQUEST_STATE: 0,})
 
-    async def send_command(self, obj_id: int, cmd: int) -> dict[str, Any]:
+    async def send_command(self, obj_id: int, command: int):
         """Send command to object."""
-        return await self.send_message({WS_KEY_ID: obj_id, WS_KEY_CMD: cmd,})
+        await self.send_message({WS_KEY_ID: obj_id, WS_KEY_CMD: command})
 
-    async def send_system_command(self):
-        """Send system command (#S7?)."""
-        await self.send_message({WS_KEY_SERVICE_CMD: '#S7?'})
+    async def send_system_command(self, command: str):
+        """Send system command."""
+        await self.send_message({WS_KEY_SERVICE_CMD: command})
