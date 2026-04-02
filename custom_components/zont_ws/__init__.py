@@ -11,7 +11,7 @@ from homeassistant.helpers.update_coordinator import (
 from .const import (
     DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL,
     CURRENT_ENTITY_IDS, WS_KEY_TYPE, ZontType, MODE_BOILER_NAMES, WS_KEY_NAME,
-    WS_KEY_SERVICE_CMD_RESULT, WS_KEY_ID, WS_KEY_CMD_RESULT, WS_KEY_IDS,
+    WS_KEY_SERVICE_CMD_RESPONSE, WS_KEY_ID, WS_KEY_CMD_RESPONSE, WS_KEY_IDS,
 )
 from .core.exceptions import ZontInitError, ZontWsError
 from .core.zont_data import ZontDeviceInfo
@@ -116,7 +116,7 @@ class ZontCoordinator(DataUpdateCoordinator):
 
     async def _on_ws_message(self, data):
         _LOGGER.debug(f'{self.zont_ws_api.url}. ZONT Message <= {data}')
-        if WS_KEY_CMD_RESULT in data:
+        if WS_KEY_CMD_RESPONSE in data:
             return
         if WS_KEY_ID in data:
             self.data.update({data[WS_KEY_ID]: data})
@@ -125,7 +125,7 @@ class ZontCoordinator(DataUpdateCoordinator):
         self.async_set_updated_data(self.data)
 
     def get_devices_info(self):
-        zont_info = self.data.get(WS_KEY_SERVICE_CMD_RESULT)
+        zont_info = self.data.get(WS_KEY_SERVICE_CMD_RESPONSE)
         if zont_info:
             (
                 self.zont_info.model,

@@ -41,9 +41,9 @@ WS_KEY_TYPE = 'type'
 WS_KEY_NAME = 'name'
 WS_KEY_STYPE = 'stype'
 WS_KEY_CMD = 'cmd'
-WS_KEY_CMD_RESULT = 'cmdres'
+WS_KEY_CMD_RESPONSE = 'cmdres'
 WS_KEY_SERVICE_CMD = 'scmd'
-WS_KEY_SERVICE_CMD_RESULT = 'scmdres'
+WS_KEY_SERVICE_CMD_RESPONSE = 'scmdres'
 WS_KEY_TEMPERATURE = 't'
 WS_KEY_AVAILABLE = 'a'
 WS_KEY_FAILED = 'failed'
@@ -86,13 +86,13 @@ class ZontType:
 class ZontSysCommand:
     """System commands."""
 
-    DATE = 'SDATE?'
-    RESTART = 'SRESTART?'
-    SERIAL_NUMBER = '#S54?'
-    DEVICE_INFO = '#S7?'
-    GSM_INFO = '#S4?'
-    NETWORK_INFO = '#S205?'
-    WIFI_INFO = '#S198?'
+    DATE = 'SDATE'
+    RESTART = 'SRESTART'
+    SERIAL_NUMBER = '#S54'
+    DEVICE_INFO = '#S7'
+    GSM_INFO = '#S4'
+    NETWORK_INFO = '#S205'
+    WIFI_INFO = '#S198'
 
 
 class RadioType:

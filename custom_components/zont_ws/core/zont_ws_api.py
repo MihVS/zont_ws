@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from typing import Any
 
 import aiohttp
 
@@ -167,7 +166,7 @@ class ZontWsApi:
                 data.update(control_data)
         if not data.get(WS_KEY_IDS):
             _LOGGER.error(f'Host: {self._host}. Init failed.')
-            raise ZontInitError('Could not get ids.')
+            raise ZontInitError('Couldn`t get ids.')
 
         await self.send_system_command(ZontSysCommand.DEVICE_INFO)
         for control_id in data[WS_KEY_IDS]:
@@ -209,4 +208,4 @@ class ZontWsApi:
 
     async def send_system_command(self, command: str):
         """Send system command."""
-        await self.send_message({WS_KEY_SERVICE_CMD: command})
+        await self.send_message({WS_KEY_SERVICE_CMD: f'{command}?'})
