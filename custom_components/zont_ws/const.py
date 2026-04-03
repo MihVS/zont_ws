@@ -61,6 +61,8 @@ WS_KEY_HUMIDITY = 'h'
 WS_KEY_BATTERY = 'b'
 WS_KEY_RSSI = 'r'
 
+KEY_SYSTEM = 'system'
+
 COMMAND_ON = 1
 COMMAND_OFF = 0
 
@@ -93,6 +95,17 @@ class ZontSysCommand:
     GSM_INFO = '#S4'
     NETWORK_INFO = '#S205'
     WIFI_INFO = '#S198'
+    SERVER_INFO = '#S224'
+
+
+INIT_SYS_COMMANDS = [
+    ZontSysCommand.DEVICE_INFO,
+    ZontSysCommand.SERIAL_NUMBER,
+    ZontSysCommand.GSM_INFO,
+    ZontSysCommand.NETWORK_INFO,
+    ZontSysCommand.WIFI_INFO,
+    ZontSysCommand.SERVER_INFO,
+]
 
 
 class RadioType:
@@ -166,12 +179,12 @@ ZONT_BINARY_SENSORS = (
 )
 
 PLATFORMS = [
-    'sensor',
-    'binary_sensor',
-    'switch',
-    'button',
-    'climate',
-    'alarm_control_panel',
+    # 'sensor',
+    # 'binary_sensor',
+    # 'switch',
+    # 'button',
+    # 'climate',
+    # 'alarm_control_panel',
 ]
 
 MIN_TEMP_AIR = 5

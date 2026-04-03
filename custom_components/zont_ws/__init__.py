@@ -176,6 +176,7 @@ class ZontCoordinator(DataUpdateCoordinator):
         try:
             for control_id in self.ids_for_update:
                 await self.zont_ws_api.get_state(control_id)
+            print(self.data)
         except ZontWsError:
             _LOGGER.warning(f'Waiting connect to zont ({self.zont_ws_api.url})...')
         _LOGGER.info(f'Finish polling the controller.')

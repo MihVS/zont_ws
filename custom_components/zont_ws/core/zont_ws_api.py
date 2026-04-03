@@ -10,7 +10,7 @@ from ..const import (
     WS_TIMEOUT_REQUEST, HEARTBEAT, WS_KEY_USER, WS_KEY_AUTH, WS_KEY_IDS,
     WS_KEY_REQUEST_IDS, WS_KEY_ID, WS_KEY_REQUEST_STATE, WS_KEY_CMD,
     WS_KEY_SERVICE_CMD, WS_KEY_PASS, WS_KEY_FAILED, TIMEOUT_RECONNECT,
-    ZontSysCommand
+    INIT_SYS_COMMANDS, WS_KEY_SERVICE_CMD_RESPONSE, KEY_SYSTEM
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -148,7 +148,7 @@ class ZontWsApi:
             await self._ws.send_json(payload)
 
     async def get_init_data(self) -> dict:
-        data = {}
+        data = {KEY_SYSTEM: {},}
 
         await self.get_ids()
         deadline = asyncio.get_running_loop().time() + 2
@@ -168,7 +168,9 @@ class ZontWsApi:
             _LOGGER.error(f'Host: {self._host}. Init failed.')
             raise ZontInitError('Couldn`t get ids.')
 
-        await self.send_system_command(ZontSysCommand.DEVICE_INFO)
+        # await self.send_system_command(ZontSysCommand.DEVICE_INFO)
+        for sys_command in INIT_SYS_COMMANDS:
+            await self.send_system_command(sys_command)
         for control_id in data[WS_KEY_IDS]:
             await self.get_state(control_id)
 
@@ -188,6 +190,10 @@ class ZontWsApi:
                 data.update({control_data[WS_KEY_ID]: control_data})
                 _LOGGER.debug(f'Init data updated by '
                               f'"{control_data[WS_KEY_ID]}: {control_data}"')
+            if WS_KEY_SERVICE_CMD_RESPONSE in control_data:
+                key, value = control_data[
+                    WS_KEY_SERVICE_CMD_RESPONSE].split(':', maxsplit=1)
+                data[KEY_SYSTEM].update({key: value})
             else:
                 data.update(control_data)
                 _LOGGER.debug(f'Init data updated by {control_data}')
