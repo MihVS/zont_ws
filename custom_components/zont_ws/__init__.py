@@ -12,6 +12,7 @@ from .const import (
     DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL,
     CURRENT_ENTITY_IDS, WS_KEY_TYPE, ZontType, MODE_BOILER_NAMES, WS_KEY_NAME,
     WS_KEY_SERVICE_CMD_RESPONSE, WS_KEY_ID, WS_KEY_CMD_RESPONSE, WS_KEY_IDS,
+    KEY_SYSTEM, ZontSysCommand,
 )
 from .core.exceptions import ZontInitError, ZontWsError
 from .core.zont_data import ZontDeviceInfo
@@ -112,25 +113,32 @@ class ZontCoordinator(DataUpdateCoordinator):
         self.zont_ws_api: ZontWsApi = zont_ws_api
         self.zont_info: ZontDeviceInfo = ZontDeviceInfo()
         self.ids_for_update = []
-        self.data = {}
+        self.sys_for_update = []
+        self.data = {KEY_SYSTEM: {},}
 
-    async def _on_ws_message(self, data):
-        _LOGGER.debug(f'{self.zont_ws_api.url}. ZONT Message <= {data}')
-        if WS_KEY_CMD_RESPONSE in data:
+    async def _on_ws_message(self, message):
+        _LOGGER.debug(f'{self.zont_ws_api.url}. ZONT Message <= {message}')
+
+        if WS_KEY_CMD_RESPONSE in message:
             return
-        if WS_KEY_ID in data:
-            self.data.update({data[WS_KEY_ID]: data})
+        if WS_KEY_ID in message:
+            self.data.update({message[WS_KEY_ID]: message})
+        elif WS_KEY_SERVICE_CMD_RESPONSE in message:
+            key, value = message[
+                WS_KEY_SERVICE_CMD_RESPONSE].split(':', maxsplit=1)
+            self.data[KEY_SYSTEM].update({key: value})
         else:
-            self.data.update(data)
+            self.data.update(message)
         self.async_set_updated_data(self.data)
 
     def get_devices_info(self):
-        zont_info = self.data.get(WS_KEY_SERVICE_CMD_RESPONSE)
+        _system = self.data[KEY_SYSTEM]
+        zont_info = _system.get(ZontSysCommand.DEVICE_INFO)
+        serial_number = _system.get(ZontSysCommand.SERIAL_NUMBER)
         if zont_info:
-            (
-                self.zont_info.model,
-                self.zont_info.hardware,
-                self.zont_info.software) = zont_info.split(':')[1].split(' ')
+            (self.zont_info.model,
+             self.zont_info.hardware,
+             self.zont_info.software) = zont_info.split(' ')
 
         device_info = DeviceInfo(**{
             "identifiers": {(DOMAIN, self.zont_ws_api.name)},
@@ -140,6 +148,7 @@ class ZontCoordinator(DataUpdateCoordinator):
             "configuration_url": CONFIGURATION_URL,
             "model": self.zont_info.model,
             "manufacturer": MANUFACTURER,
+            "serial_number": serial_number,
         })
         return device_info
 
@@ -176,7 +185,8 @@ class ZontCoordinator(DataUpdateCoordinator):
         try:
             for control_id in self.ids_for_update:
                 await self.zont_ws_api.get_state(control_id)
-            print(self.data)
+            for sys_command in self.sys_for_update:
+                await self.zont_ws_api.send_system_command(sys_command)
         except ZontWsError:
             _LOGGER.warning(f'Waiting connect to zont ({self.zont_ws_api.url})...')
         _LOGGER.info(f'Finish polling the controller.')

@@ -168,7 +168,6 @@ class ZontWsApi:
             _LOGGER.error(f'Host: {self._host}. Init failed.')
             raise ZontInitError('Couldn`t get ids.')
 
-        # await self.send_system_command(ZontSysCommand.DEVICE_INFO)
         for sys_command in INIT_SYS_COMMANDS:
             await self.send_system_command(sys_command)
         for control_id in data[WS_KEY_IDS]:

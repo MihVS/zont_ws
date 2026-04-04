@@ -179,12 +179,12 @@ ZONT_BINARY_SENSORS = (
 )
 
 PLATFORMS = [
-    # 'sensor',
-    # 'binary_sensor',
-    # 'switch',
-    # 'button',
-    # 'climate',
-    # 'alarm_control_panel',
+    'sensor',
+    'binary_sensor',
+    'switch',
+    'button',
+    'climate',
+    'alarm_control_panel',
 ]
 
 MIN_TEMP_AIR = 5
