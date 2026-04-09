@@ -12,7 +12,7 @@ from .const import (
     DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL,
     CURRENT_ENTITY_IDS, WS_KEY_TYPE, ZontType, MODE_BOILER_NAMES, WS_KEY_NAME,
     WS_KEY_SERVICE_CMD_RESPONSE, WS_KEY_ID, WS_KEY_CMD_RESPONSE, WS_KEY_IDS,
-    KEY_SYSTEM, ZontSysCommand,
+    ZontSysCommand,
 )
 from .core.exceptions import ZontInitError, ZontWsError
 from .core.zont_data import ZontDeviceInfo
@@ -114,7 +114,7 @@ class ZontCoordinator(DataUpdateCoordinator):
         self.zont_info: ZontDeviceInfo = ZontDeviceInfo()
         self.ids_for_update = []
         self.sys_for_update = []
-        self.data = {KEY_SYSTEM: {},}
+        self.data = {WS_KEY_SERVICE_CMD_RESPONSE: {},}
 
     async def _on_ws_message(self, message):
         _LOGGER.debug(f'{self.zont_ws_api.url}. ZONT Message <= {message}')
@@ -126,13 +126,13 @@ class ZontCoordinator(DataUpdateCoordinator):
         elif WS_KEY_SERVICE_CMD_RESPONSE in message:
             key, value = message[
                 WS_KEY_SERVICE_CMD_RESPONSE].split(':', maxsplit=1)
-            self.data[KEY_SYSTEM].update({key: value})
+            self.data[WS_KEY_SERVICE_CMD_RESPONSE].update({key: value})
         else:
             self.data.update(message)
         self.async_set_updated_data(self.data)
 
     def get_devices_info(self):
-        _system = self.data[KEY_SYSTEM]
+        _system = self.data[WS_KEY_SERVICE_CMD_RESPONSE]
         zont_info = _system.get(ZontSysCommand.DEVICE_INFO)
         serial_number = _system.get(ZontSysCommand.SERIAL_NUMBER)
         if zont_info:

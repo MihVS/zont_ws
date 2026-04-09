@@ -10,7 +10,7 @@ from ..const import (
     WS_TIMEOUT_REQUEST, HEARTBEAT, WS_KEY_USER, WS_KEY_AUTH, WS_KEY_IDS,
     WS_KEY_REQUEST_IDS, WS_KEY_ID, WS_KEY_REQUEST_STATE, WS_KEY_CMD,
     WS_KEY_SERVICE_CMD, WS_KEY_PASS, WS_KEY_FAILED, TIMEOUT_RECONNECT,
-    INIT_SYS_COMMANDS, WS_KEY_SERVICE_CMD_RESPONSE, KEY_SYSTEM
+    INIT_SYS_COMMANDS, WS_KEY_SERVICE_CMD_RESPONSE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -148,7 +148,7 @@ class ZontWsApi:
             await self._ws.send_json(payload)
 
     async def get_init_data(self) -> dict:
-        data = {KEY_SYSTEM: {},}
+        data = {WS_KEY_SERVICE_CMD_RESPONSE: {},}
 
         await self.get_ids()
         deadline = asyncio.get_running_loop().time() + 2
@@ -192,7 +192,7 @@ class ZontWsApi:
             if WS_KEY_SERVICE_CMD_RESPONSE in control_data:
                 key, value = control_data[
                     WS_KEY_SERVICE_CMD_RESPONSE].split(':', maxsplit=1)
-                data[KEY_SYSTEM].update({key: value})
+                data[WS_KEY_SERVICE_CMD_RESPONSE].update({key: value})
             else:
                 data.update(control_data)
                 _LOGGER.debug(f'Init data updated by {control_data}')

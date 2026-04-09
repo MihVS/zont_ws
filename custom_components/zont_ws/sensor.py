@@ -21,7 +21,8 @@ from .const import (
     WS_KEY_MODUL_BOILER, WS_KEY_PRESS_BOILER, WS_KEY_STATE_BOILER,
     WS_KEY_ERR_BOILER, WS_KEY_STYPE, ZONT_BINARY_SENSORS, ZONT_UNITS,
     WS_KEY_UNIT, WS_KEY_VALUE, PERCENT_BATTERY, WS_KEY_HUMIDITY,
-    WS_KEY_BATTERY, ZontAnalogType, RadioType, WS_KEY_RSSI, WS_KEY_AVAILABLE
+    WS_KEY_BATTERY, ZontAnalogType, RadioType, WS_KEY_RSSI, WS_KEY_AVAILABLE,
+    WS_KEY_SERVICE_CMD_RESPONSE, ZontSysCommand
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,6 +41,15 @@ async def async_setup_entry(
         sens = []
         if not isinstance(control_state, dict):
             continue
+        if control_id == WS_KEY_SERVICE_CMD_RESPONSE:
+            gsm_info = control_state.get(ZontSysCommand.GSM_INFO)
+            _LOGGER.debug(f'GSM info: {gsm_info}')
+            if check_gsm(gsm_info):
+                coordinator.sys_for_update.append(ZontSysCommand.GSM_INFO)
+
+                unique_id = f'{entry_id}{control_id}-gsm_strength'
+                sens.append(ZontSensorGSMStrength(coordinator, unique_id))
+
         type_control = control_state.get(WS_KEY_TYPE)
         match type_control:
             case ZontType.NTC_TEMP_SENSOR | ZontType.DS18_TEMP_SENSOR:
@@ -153,6 +163,11 @@ async def async_setup_entry(
             async_add_entities(sens)
             _LOGGER.debug(f'Added sensors: {sens}')
 
+def check_gsm(date: str):
+    if date:
+        if len(date.split(' ', maxsplit=2)) == 3:
+            return True
+    return False
 
 class ZontSensor(CoordinatorEntity, SensorEntity):
 
@@ -383,3 +398,43 @@ class ZontSensorRSSI(ZontSensorMeasurement):
         value = self.get_value()
         return value / 2 - 73
 
+
+class ZontSensorGSMStrength(CoordinatorEntity, SensorEntity):
+
+    def __init__(self, coordinator: ZontCoordinator, unique_id: str) -> None:
+        super().__init__(coordinator)
+        self._coord = coordinator
+        self._name = 'Сигнал GSM'
+        self._unique_id = unique_id
+        self._attr_device_info = coordinator.get_devices_info()
+
+    @cached_property
+    def name(self) -> str:
+        return self._name
+
+    @cached_property
+    def unique_id(self) -> str:
+        return self._unique_id
+
+    def __repr__(self) -> str:
+        if not self.hass:
+            return (f'<Sensor entity '
+                    f'{self._coord.zont_info.model}-{self.name}>')
+        return super().__repr__()
+
+    @cached_property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of measurement of the sensor, if any."""
+        return PERCENTAGE
+
+    @cached_property
+    def device_class(self) -> SensorDeviceClass | None:
+        """Return the class of this entity."""
+        return SensorDeviceClass.SIGNAL_STRENGTH
+
+    @property
+    def native_value(self) -> float | str:
+        """Return the value reported by the sensor."""
+        value = self.coordinator.data[
+            WS_KEY_SERVICE_CMD_RESPONSE][ZontSysCommand.GSM_INFO].split(' ')[0]
+        return int((int(value) / 31) * 100)

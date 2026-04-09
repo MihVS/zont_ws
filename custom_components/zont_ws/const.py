@@ -61,8 +61,6 @@ WS_KEY_HUMIDITY = 'h'
 WS_KEY_BATTERY = 'b'
 WS_KEY_RSSI = 'r'
 
-KEY_SYSTEM = 'system'
-
 COMMAND_ON = 1
 COMMAND_OFF = 0
 
