@@ -489,13 +489,17 @@ class ZontSensorGSMLevel(ZontSensorSignalLevel):
     @property
     def extra_state_attributes(self):
         data = self.coordinator.data.get(WS_KEY_SERVICE_CMD_RESPONSE, {})
-        wifi_info = data.get(ZontSysCommand.GSM_INFO, '')
+        gsm_info = data.get(ZontSysCommand.GSM_INFO, '')
+        imei = data.get(ZontSysCommand.IMEI, '')
+        mobile_number = data.get(ZontSysCommand.MOBILE_NUMBER, '').split(' ')
 
-        parts = wifi_info.split(' ', maxsplit=2)
+        parts = gsm_info.split(' ', maxsplit=2)
 
         return {
             'available': parts[1] if len(parts) > 1 else 'unknown',
             'mobile operator': parts[2] if len(parts) > 2 else 'unknown',
+            'mobile number': mobile_number[0] if len(mobile_number) > 0 else 'unknown',
+            'imei': imei,
         }
 
 

@@ -97,6 +97,7 @@ class ZontSysCommand:
     IMEI = '#S216'
     VOLTAGE = '#S6'
     TIME_ZONE = '#S36'
+    MOBILE_NUMBER = '#S207'
 
 
 INIT_SYS_COMMANDS = [
@@ -109,6 +110,7 @@ INIT_SYS_COMMANDS = [
     ZontSysCommand.IMEI,
     ZontSysCommand.VOLTAGE,
     ZontSysCommand.TIME_ZONE,
+    ZontSysCommand.MOBILE_NUMBER,
 ]
 
 
