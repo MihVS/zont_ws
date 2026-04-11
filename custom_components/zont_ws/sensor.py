@@ -47,14 +47,18 @@ async def async_setup_entry(
             if check_gsm(gsm_info):
                 coordinator.sys_for_update.append(ZontSysCommand.GSM_INFO)
                 unique_id = f'{entry_id}{control_id}-gsm_level'
-                sens.append(ZontSensorGSMLevel(coordinator, unique_id))
+                sens.append(ZontSensorGSMLevel(
+                    coordinator, unique_id, 'GSM')
+                )
 
             wifi_info = control_state.get(ZontSysCommand.WIFI_INFO)
             _LOGGER.debug(f'WI-FI info: {wifi_info}')
             if check_wifi(wifi_info):
                 coordinator.sys_for_update.append(ZontSysCommand.WIFI_INFO)
                 unique_id = f'{entry_id}{control_id}-wifi_level'
-                sens.append(ZontSensorWIFILevel(coordinator, unique_id))
+                sens.append(ZontSensorWIFILevel(
+                    coordinator, unique_id, 'WI-FI')
+                )
 
         type_control = control_state.get(WS_KEY_TYPE)
         match type_control:
@@ -414,14 +418,17 @@ class ZontSensorRSSI(ZontSensorMeasurement):
         return value / 2 - 73
 
 
-class ZontSensorGSMLevel(CoordinatorEntity, SensorEntity):
+class ZontSensorSignalLevel(CoordinatorEntity, SensorEntity):
 
-    # _attr_icon = 'mdi: mdi:wifi-strength-4'
+    _unrecorded_attributes = frozenset({MATCH_ALL})
 
-    def __init__(self, coordinator: ZontCoordinator, unique_id: str) -> None:
+    def __init__(self,
+                 coordinator: ZontCoordinator,
+                 unique_id: str,
+                 name: str) -> None:
         super().__init__(coordinator)
         self._coord = coordinator
-        self._name = 'Сигнал GSM'
+        self._name = name
         self._unique_id = unique_id
         self._attr_device_info = coordinator.get_devices_info()
 
@@ -448,49 +455,51 @@ class ZontSensorGSMLevel(CoordinatorEntity, SensorEntity):
     def native_unit_of_measurement(self) -> str | None:
         """Return the unit of measurement of the sensor, if any."""
         return PERCENTAGE
+
+
+class ZontSensorGSMLevel(ZontSensorSignalLevel):
 
     @property
     def native_value(self) -> float | str:
         """Return the value reported by the sensor."""
-        value = self.coordinator.data[
-            WS_KEY_SERVICE_CMD_RESPONSE][ZontSysCommand.GSM_INFO].split(' ')[0]
-        return int((int(value) / 31) * 100)
+        is_connected = int(self.coordinator.data[
+            WS_KEY_SERVICE_CMD_RESPONSE][
+                        ZontSysCommand.GSM_INFO].split(' ')[1])
+        if is_connected == 0:
+            return 0
+        value = int(self.coordinator.data[
+            WS_KEY_SERVICE_CMD_RESPONSE][
+                        ZontSysCommand.GSM_INFO].split(' ')[0])
+        return int((value / 31) * 100)
+
+    @property
+    def icon(self) -> str:
+        """Return the icon based on signal level."""
+        signal_level = self.native_value
+        if signal_level >= 70:
+            return 'mdi:signal-cellular-3'
+        elif signal_level >= 35:
+            return 'mdi:signal-cellular-2'
+        elif signal_level >= 10:
+            return 'mdi:signal-cellular-1'
+        elif signal_level > 0:
+            return 'mdi:signal-cellular-outline'
+        return 'mdi:signal-off'
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data.get(WS_KEY_SERVICE_CMD_RESPONSE, {})
+        wifi_info = data.get(ZontSysCommand.GSM_INFO, '')
+
+        parts = wifi_info.split(' ', maxsplit=2)
+
+        return {
+            'available': parts[1] if len(parts) > 1 else 'unknown',
+            'mobile operator': parts[2] if len(parts) > 2 else 'unknown',
+        }
 
 
-class ZontSensorWIFILevel(CoordinatorEntity, SensorEntity):
-
-    _unrecorded_attributes = frozenset({MATCH_ALL})
-
-    def __init__(self, coordinator: ZontCoordinator, unique_id: str) -> None:
-        super().__init__(coordinator)
-        self._coord = coordinator
-        self._name = 'Сигнал WI-FI'
-        self._unique_id = unique_id
-        self._attr_device_info = coordinator.get_devices_info()
-
-    @cached_property
-    def name(self) -> str:
-        return self._name
-
-    @cached_property
-    def unique_id(self) -> str:
-        return self._unique_id
-
-    def __repr__(self) -> str:
-        if not self.hass:
-            return (f'<Sensor entity '
-                    f'{self._coord.zont_info.model}-{self.name}>')
-        return super().__repr__()
-
-    @cached_property
-    def state_class(self) -> SensorStateClass | str | None:
-        """Return the state class of this entity, if any."""
-        return SensorStateClass.MEASUREMENT
-
-    @cached_property
-    def native_unit_of_measurement(self) -> str | None:
-        """Return the unit of measurement of the sensor, if any."""
-        return PERCENTAGE
+class ZontSensorWIFILevel(ZontSensorSignalLevel):
 
     @property
     def native_value(self) -> float | str:
@@ -505,16 +514,16 @@ class ZontSensorWIFILevel(CoordinatorEntity, SensorEntity):
         """Return the icon based on signal level."""
         signal_level = self.native_value
         if signal_level >= 80:
-            return "mdi:wifi-strength-4"
+            return 'mdi:wifi-strength-4'
         elif signal_level >= 60:
-            return "mdi:wifi-strength-3"
+            return 'mdi:wifi-strength-3'
         elif signal_level >= 40:
-            return "mdi:wifi-strength-2"
+            return 'mdi:wifi-strength-2'
         elif signal_level >= 20:
-            return "mdi:wifi-strength-1"
+            return 'mdi:wifi-strength-1'
         elif signal_level > 0:
-            return "mdi:wifi-strength-outline"
-        return "mdi:wifi-strength-off-outline"
+            return 'mdi:wifi-strength-outline'
+        return 'mdi:wifi-strength-off-outline'
 
     @staticmethod
     def _rssi_to_percent(value: int) -> int:
@@ -531,7 +540,7 @@ class ZontSensorWIFILevel(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         data = self.coordinator.data.get(WS_KEY_SERVICE_CMD_RESPONSE, {})
-        wifi_info = data.get(ZontSysCommand.WIFI_INFO, "")
+        wifi_info = data.get(ZontSysCommand.WIFI_INFO, '')
 
         parts = wifi_info.split(' ')
 

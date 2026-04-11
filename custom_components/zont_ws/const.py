@@ -14,7 +14,7 @@ LOGIN_DEFAULT = 'admin'
 PASSWORD_DEFAULT = 'admin'
 URL_DEFAULT = 'https://192.168.1.40/ws'
 
-TIME_UPDATE = 30
+TIME_UPDATE = 60
 WS_TIMEOUT_REQUEST = 5
 HEARTBEAT = 60
 TIMEOUT_RECONNECT = 10
@@ -94,6 +94,9 @@ class ZontSysCommand:
     NETWORK_INFO = '#S205'
     WIFI_INFO = '#S198'
     SERVER_INFO = '#S224'
+    IMEI = '#S216'
+    VOLTAGE = '#S6'
+    TIME_ZONE = '#S36'
 
 
 INIT_SYS_COMMANDS = [
@@ -103,6 +106,9 @@ INIT_SYS_COMMANDS = [
     ZontSysCommand.NETWORK_INFO,
     ZontSysCommand.WIFI_INFO,
     ZontSysCommand.SERVER_INFO,
+    ZontSysCommand.IMEI,
+    ZontSysCommand.VOLTAGE,
+    ZontSysCommand.TIME_ZONE,
 ]
 
 
