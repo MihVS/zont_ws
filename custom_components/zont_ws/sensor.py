@@ -573,7 +573,7 @@ class ZontSensorWIFILevel(ZontSensorSignalLevel):
             'mac': parts[2] if len(parts) > 2 else 'unknown',
             'ip': parts[3] if len(parts) > 3 else 'unknown',
             'mask': parts[4] if len(parts) > 4 else 'unknown',
-            'gate': parts[5] if len(parts) > 5 else 'unknown',
+            'gateway': parts[5] if len(parts) > 5 else 'unknown',
         }
 
 

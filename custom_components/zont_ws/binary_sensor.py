@@ -1,9 +1,11 @@
 import logging
+from functools import cached_property
 
 from homeassistant.components.binary_sensor import (
     BinarySensorEntity, BinarySensorDeviceClass
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import MATCH_ALL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -12,7 +14,8 @@ from .const import (
     DOMAIN, CURRENT_ENTITY_IDS, ENTRIES, WS_KEY_TYPE, ZontType, WS_KEY_STYPE,
     ZontWebElmType, WS_KEY_ID, WS_KEY_NAME, WS_KEY_STATE, ZontAnalogType,
     WS_KEY_TRIGGERED, ZONT_BINARY_SENSORS, WS_KEY_AVAILABLE, WS_KEY_FAILURE,
-    ZONT_BINARY_SENSORS_RDIO, RadioType
+    ZONT_BINARY_SENSORS_RDIO, RadioType, WS_KEY_SERVICE_CMD_RESPONSE,
+    ZontSysCommand
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,6 +34,16 @@ async def async_setup_entry(
         binary_sensors = []
         if not isinstance(control_state, dict):
             continue
+        if control_id == WS_KEY_SERVICE_CMD_RESPONSE:
+            lan_info = control_state.get(ZontSysCommand.NETWORK_INFO)
+            _LOGGER.debug(f'LAN info: {lan_info}')
+            if check_lan(lan_info):
+                coordinator.sys_for_update.append(ZontSysCommand.NETWORK_INFO)
+                unique_id = f'{entry_id}{control_id}-LAN-info'
+                binary_sensors.append(ZontBinarySensorNetwork(
+                    coordinator, unique_id, 'Локальная сеть')
+                )
+
         type_control = control_state.get(WS_KEY_TYPE)
         match type_control:
             case ZontType.HEATING_CIRCUIT:
@@ -71,6 +84,14 @@ async def async_setup_entry(
             async_add_entities(binary_sensors)
             _LOGGER.debug(f'Added binary sensors: {binary_sensors}')
 
+def check_lan(date: str):
+    if date:
+        if len(date.split(' ')) == 5:
+            _LOGGER.debug('check_lan: True')
+            return True
+    _LOGGER.debug('check_lan: False')
+    return False
+
 
 class ZontBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
@@ -88,11 +109,11 @@ class ZontBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._unique_id = unique_id
         self._attr_device_info = coordinator.get_devices_info()
 
-    @property
+    @cached_property
     def name(self) -> str:
         return self._name
 
-    @property
+    @cached_property
     def unique_id(self) -> str:
         return self._unique_id
 
@@ -132,7 +153,7 @@ class ZontBinarySensorExtension(ZontBinarySensor):
 
 class ZontBinarySensorAnalog(ZontBinarySensorExtension):
 
-    @property
+    @cached_property
     def device_class(self) -> BinarySensorDeviceClass | None:
         """Return the class of this entity."""
         control_state = self._coord.data.get(self._control_id)
@@ -152,7 +173,7 @@ class ZontBinarySensorAnalog(ZontBinarySensorExtension):
 
 class ZontBinarySensorRadio(ZontBinarySensorExtension):
 
-    @property
+    @cached_property
     def device_class(self) -> BinarySensorDeviceClass | None:
         """Return the class of this entity."""
         control_state = self._coord.data.get(self._control_id)
@@ -164,3 +185,63 @@ class ZontBinarySensorRadio(ZontBinarySensorExtension):
                 return BinarySensorDeviceClass.MOTION
             case _:
                 return None
+
+
+class ZontBinarySensorService(CoordinatorEntity, BinarySensorEntity):
+
+    def __init__(self,
+                 coordinator: ZontCoordinator,
+                 unique_id: str,
+                 name: str) -> None:
+        super().__init__(coordinator)
+        self._coord = coordinator
+        self._name = name
+        self._unique_id = unique_id
+        self._attr_device_info = coordinator.get_devices_info()
+
+    @cached_property
+    def name(self) -> str:
+        return self._name
+
+    @cached_property
+    def unique_id(self) -> str:
+        return self._unique_id
+
+    def __repr__(self) -> str:
+        if not self.hass:
+            return (f'<Sensor entity '
+                    f'{self._coord.zont_info.model}-{self.name}>')
+        return super().__repr__()
+
+
+class ZontBinarySensorNetwork(ZontBinarySensorService):
+
+    _unrecorded_attributes = frozenset({MATCH_ALL})
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the binary sensor is on."""
+        value = int(self.coordinator.data[
+                        WS_KEY_SERVICE_CMD_RESPONSE][
+                        ZontSysCommand.NETWORK_INFO].split(' ')[4])
+        return bool(value)
+
+    @cached_property
+    def device_class(self) -> BinarySensorDeviceClass | None:
+        """Return the class of this entity."""
+        return BinarySensorDeviceClass.CONNECTIVITY
+
+    @property
+    def extra_state_attributes(self):
+        data = self.coordinator.data.get(WS_KEY_SERVICE_CMD_RESPONSE, {})
+        lan_info = data.get(ZontSysCommand.NETWORK_INFO, '')
+
+        parts = lan_info.split(' ')
+
+        return {
+            'available': parts[4] if len(parts) > 4 else 'unknown',
+            'mac': parts[0] if len(parts) > 0 else 'unknown',
+            'ip': parts[1] if len(parts) > 1 else 'unknown',
+            'mask': parts[2] if len(parts) > 2 else 'unknown',
+            'gateway': parts[3] if len(parts) > 3 else 'unknown',
+        }
