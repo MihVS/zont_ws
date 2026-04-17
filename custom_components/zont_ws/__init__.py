@@ -13,7 +13,7 @@ from .const import (
     DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL,
     CURRENT_ENTITY_IDS, WS_KEY_TYPE, ZontType, MODE_BOILER_NAMES, WS_KEY_NAME,
     WS_KEY_SERVICE_CMD_RESPONSE, WS_KEY_ID, WS_KEY_CMD_RESPONSE, WS_KEY_IDS,
-    ZontSysCommand,
+    ZontSysCommand, RESP_NO_DATA,
 )
 from .core.exceptions import ZontInitError, ZontWsError
 from .core.zont_data import ZontDeviceInfo
@@ -128,6 +128,8 @@ class ZontCoordinator(DataUpdateCoordinator):
             key, value = message[
                 WS_KEY_SERVICE_CMD_RESPONSE].split(':', maxsplit=1)
             # key, value = self.fake_wifi_level(key, value)
+            if value == RESP_NO_DATA:
+                return
             self.data[WS_KEY_SERVICE_CMD_RESPONSE].update({key: value})
         else:
             self.data.update(message)

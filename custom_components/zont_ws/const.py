@@ -83,6 +83,9 @@ class ZontType:
     ANY = 255
 
 
+RESP_NO_DATA = '!'
+
+
 class ZontSysCommand:
     """System commands."""
 

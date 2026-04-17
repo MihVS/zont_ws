@@ -7,7 +7,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     UnitOfTemperature, PERCENTAGE, UnitOfPressure,
-    SIGNAL_STRENGTH_DECIBELS_MILLIWATT, MATCH_ALL
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT, MATCH_ALL, UnitOfElectricPotential
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -58,6 +58,15 @@ async def async_setup_entry(
                 unique_id = f'{entry_id}{control_id}-wifi_level'
                 sens.append(ZontSensorWIFILevel(
                     coordinator, unique_id, 'WI-FI')
+                )
+
+            voltage = control_state.get(ZontSysCommand.VOLTAGE)
+            _LOGGER.debug(f'Voltage: {voltage}')
+            if check_voltage(voltage):
+                coordinator.sys_for_update.append(ZontSysCommand.VOLTAGE)
+                unique_id = f'{entry_id}{control_id}-voltage_plc'
+                sens.append(ZontSensorVoltagePLC(
+                    coordinator, unique_id, 'Напряжение')
                 )
 
         type_control = control_state.get(WS_KEY_TYPE)
@@ -186,6 +195,14 @@ def check_wifi(date: str):
         _LOGGER.debug('check_wifi: True')
         return True
     _LOGGER.debug('check_wifi: False')
+    return False
+
+def check_voltage(date: str):
+    if date:
+        if len(date.split(' ')) == 2:
+            _LOGGER.debug('check_voltage: True')
+            return True
+    _LOGGER.debug('check_voltage: False')
     return False
 
 class ZontSensor(CoordinatorEntity, SensorEntity):
@@ -418,9 +435,7 @@ class ZontSensorRSSI(ZontSensorMeasurement):
         return value / 2 - 73
 
 
-class ZontSensorSignalLevel(CoordinatorEntity, SensorEntity):
-
-    _unrecorded_attributes = frozenset({MATCH_ALL})
+class ZontSensorService(CoordinatorEntity, SensorEntity):
 
     def __init__(self,
                  coordinator: ZontCoordinator,
@@ -450,6 +465,11 @@ class ZontSensorSignalLevel(CoordinatorEntity, SensorEntity):
     def state_class(self) -> SensorStateClass | str | None:
         """Return the state class of this entity, if any."""
         return SensorStateClass.MEASUREMENT
+
+
+class ZontSensorSignalLevel(ZontSensorService):
+
+    _unrecorded_attributes = frozenset({MATCH_ALL})
 
     @cached_property
     def native_unit_of_measurement(self) -> str | None:
@@ -555,3 +575,24 @@ class ZontSensorWIFILevel(ZontSensorSignalLevel):
             'mask': parts[4] if len(parts) > 4 else 'unknown',
             'gate': parts[5] if len(parts) > 5 else 'unknown',
         }
+
+
+class ZontSensorVoltagePLC(ZontSensorService):
+
+    @property
+    def native_value(self) -> float | str:
+        """Return the value reported by the sensor."""
+        value = int(self.coordinator.data[
+            WS_KEY_SERVICE_CMD_RESPONSE][
+            ZontSysCommand.VOLTAGE].split(' ')[0])
+        return round(value/10, 1)
+
+    @cached_property
+    def device_class(self) -> SensorDeviceClass | None:
+        """Return the class of this entity."""
+        return SensorDeviceClass.VOLTAGE
+
+    @cached_property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of measurement of the sensor, if any."""
+        return UnitOfElectricPotential.VOLT
