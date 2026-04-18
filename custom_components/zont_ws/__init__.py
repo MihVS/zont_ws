@@ -115,7 +115,7 @@ class ZontCoordinator(DataUpdateCoordinator):
         self.zont_info: ZontDeviceInfo = ZontDeviceInfo()
         self.ids_for_update = []
         self.sys_for_update = []
-        self.data = {WS_KEY_SERVICE_CMD_RESPONSE: {'#S224': '1 0 0 1'},}
+        self.data = {WS_KEY_SERVICE_CMD_RESPONSE: {},}
 
     async def _on_ws_message(self, message):
         _LOGGER.debug(f'{self.zont_ws_api.url}. ZONT Message <= {message}')
@@ -129,7 +129,7 @@ class ZontCoordinator(DataUpdateCoordinator):
                 WS_KEY_SERVICE_CMD_RESPONSE].split(':', maxsplit=1)
             if value == RESP_NO_DATA:
                 return
-            self.data[WS_KEY_SERVICE_CMD_RESPONSE].update({key: value, '#S224': '1 0 0 1'})
+            self.data[WS_KEY_SERVICE_CMD_RESPONSE].update({key: value})
         else:
             self.data.update(message)
         self.async_set_updated_data(self.data)
