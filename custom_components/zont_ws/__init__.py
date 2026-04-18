@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_registry import async_get
 from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator
+    DataUpdateCoordinator, UpdateFailed
 )
 from .const import (
     DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL,
@@ -190,7 +190,12 @@ class ZontCoordinator(DataUpdateCoordinator):
                 await self.zont_ws_api.get_state(control_id)
             for sys_command in self.sys_for_update:
                 await self.zont_ws_api.send_system_command(sys_command)
+            _LOGGER.info(f'Finish polling the controller.')
+            return self.data
         except ZontWsError:
             _LOGGER.warning(f'Waiting connect to zont ({self.zont_ws_api.url})...')
-        _LOGGER.info(f'Finish polling the controller.')
-        return self.data
+            raise UpdateFailed(f'Connection to the controller is lost ({self.zont_ws_api.url})')
+
+# Убрать полное исключение в дебаг логах
+# Переработать доступность сенсоров во время дисконнекта
+# Добавить кнопку перезагрузки контроллера
