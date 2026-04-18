@@ -109,7 +109,7 @@ INIT_SYS_COMMANDS = [
     ZontSysCommand.GSM_INFO,
     ZontSysCommand.NETWORK_INFO,
     ZontSysCommand.WIFI_INFO,
-    ZontSysCommand.SERVER_INFO,
+    # ZontSysCommand.SERVER_INFO,
     ZontSysCommand.IMEI,
     ZontSysCommand.VOLTAGE,
     ZontSysCommand.TIME_ZONE,

@@ -115,7 +115,7 @@ class ZontCoordinator(DataUpdateCoordinator):
         self.zont_info: ZontDeviceInfo = ZontDeviceInfo()
         self.ids_for_update = []
         self.sys_for_update = []
-        self.data = {WS_KEY_SERVICE_CMD_RESPONSE: {},}
+        self.data = {WS_KEY_SERVICE_CMD_RESPONSE: {'#S224': '1 0 0 1'},}
 
     async def _on_ws_message(self, message):
         _LOGGER.debug(f'{self.zont_ws_api.url}. ZONT Message <= {message}')
@@ -127,23 +127,12 @@ class ZontCoordinator(DataUpdateCoordinator):
         elif WS_KEY_SERVICE_CMD_RESPONSE in message:
             key, value = message[
                 WS_KEY_SERVICE_CMD_RESPONSE].split(':', maxsplit=1)
-            # key, value = self.fake_wifi_level(key, value)
             if value == RESP_NO_DATA:
                 return
-            self.data[WS_KEY_SERVICE_CMD_RESPONSE].update({key: value})
+            self.data[WS_KEY_SERVICE_CMD_RESPONSE].update({key: value, '#S224': '1 0 0 1'})
         else:
             self.data.update(message)
         self.async_set_updated_data(self.data)
-
-    # @staticmethod
-    # def fake_wifi_level(key, value):
-    #     if key == ZontSysCommand.WIFI_INFO:
-    #         levels = ('0', '50', '60', '70', '80', '90', '100')
-    #         l = value.split(' ')
-    #         l[1] = random.choice(levels)
-    #         value = ' '.join(l)
-    #         _LOGGER.info(f'value: {value}')
-    #     return key, value
 
     def get_devices_info(self):
         _system = self.data[WS_KEY_SERVICE_CMD_RESPONSE]

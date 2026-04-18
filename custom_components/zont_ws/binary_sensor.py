@@ -43,6 +43,14 @@ async def async_setup_entry(
                 binary_sensors.append(ZontBinarySensorNetwork(
                     coordinator, unique_id, 'Локальная сеть')
                 )
+            server_info = control_state.get(ZontSysCommand.SERVER_INFO)
+            _LOGGER.debug(f'Server info: {server_info}')
+            if check_server(server_info):
+                coordinator.sys_for_update.append(ZontSysCommand.NETWORK_INFO)
+                unique_id = f'{entry_id}{control_id}-server-info'
+                binary_sensors.append(ZontBinarySensorCloudConnect(
+                    coordinator, unique_id, 'Облако ZONT')
+                )
 
         type_control = control_state.get(WS_KEY_TYPE)
         match type_control:
@@ -90,6 +98,14 @@ def check_lan(date: str):
             _LOGGER.debug('check_lan: True')
             return True
     _LOGGER.debug('check_lan: False')
+    return False
+
+def check_server(date: str):
+    if date:
+        if len(date.split(' ')) == 4:
+            _LOGGER.debug('check_server: True')
+            return True
+    _LOGGER.debug('check_server: False')
     return False
 
 
@@ -244,4 +260,40 @@ class ZontBinarySensorNetwork(ZontBinarySensorService):
             'ip': parts[1] if len(parts) > 1 else 'unknown',
             'mask': parts[2] if len(parts) > 2 else 'unknown',
             'gateway': parts[3] if len(parts) > 3 else 'unknown',
+        }
+
+
+class ZontBinarySensorCloudConnect(ZontBinarySensorService):
+
+    _unrecorded_attributes = frozenset({MATCH_ALL})
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return true if the binary sensor is on."""
+        value = int(self.coordinator.data[
+                        WS_KEY_SERVICE_CMD_RESPONSE][
+                        ZontSysCommand.SERVER_INFO].split(' ')[0])
+        return bool(value)
+
+    @cached_property
+    def device_class(self) -> BinarySensorDeviceClass | None:
+        """Return the class of this entity."""
+        return BinarySensorDeviceClass.CONNECTIVITY
+
+    @property
+    def extra_state_attributes(self):
+        type_of_connect = ['UNKNOWN', 'GSM', 'Wi-Fi', 'Ethernet']
+        data = self.coordinator.data.get(WS_KEY_SERVICE_CMD_RESPONSE, {})
+        lan_info = data.get(ZontSysCommand.SERVER_INFO, '')
+
+        parts = lan_info.split(' ')
+        connected_via = type_of_connect[0]
+        for i in range(1, 4):
+            if parts[i] == '1':
+                connected_via = type_of_connect[i]
+                break
+
+        return {
+            'available': parts[0] if len(parts) > 0 else 'unknown',
+            'connected_via': connected_via
         }
