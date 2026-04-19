@@ -37,8 +37,8 @@ async def async_setup_entry(
 
     coordinator: ZontCoordinator = hass.data[DOMAIN][ENTRIES][entry_id]
 
+    sens = []
     for control_id, control_state  in coordinator.data.items():
-        sens = []
         if not isinstance(control_state, dict):
             continue
         if control_id == WS_KEY_SERVICE_CMD_RESPONSE:
@@ -174,13 +174,12 @@ async def async_setup_entry(
                         sens.append(ZontSensorRSSI(
                             coordinator, control_state, unique_id_rssi)
                         )
-
-        for sensor in sens:
-            hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
-                sensor.unique_id)
-        if sens:
-            async_add_entities(sens)
-            _LOGGER.debug(f'Added sensors: {sens}')
+    for sensor in sens:
+        hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
+            sensor.unique_id)
+    if sens:
+        async_add_entities(sens)
+        _LOGGER.debug(f'Added sensors: {sens}')
 
 def check_gsm(date: str):
     if date:
@@ -248,6 +247,8 @@ class ZontSensor(CoordinatorEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
+        if not self._coord.zont_ws_api.is_connected:
+            return False
         control_state = self._coord.data.get(self._control_id)
         is_available = control_state.get(WS_KEY_AVAILABLE)
         if is_available is not None:

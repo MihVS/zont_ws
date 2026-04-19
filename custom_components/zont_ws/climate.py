@@ -32,8 +32,8 @@ async def async_setup_entry(
 
     coordinator: ZontCoordinator = hass.data[DOMAIN][ENTRIES][entry_id]
 
+    thermostats = []
     for control_id, control_state in coordinator.data.items():
-        thermostats = []
         if not isinstance(control_state, dict):
             continue
         type_control = control_state.get(WS_KEY_TYPE)
@@ -44,12 +44,12 @@ async def async_setup_entry(
                 thermostats.append(ZontClimateEntity(
                     coordinator, control_id, unique_id)
                 )
-        for thermostat in thermostats:
-            hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
-                thermostat.unique_id)
-        if thermostats:
-            async_add_entities(thermostats)
-            _LOGGER.debug(f'Added thermostats: {thermostats}')
+    for thermostat in thermostats:
+        hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
+            thermostat.unique_id)
+    if thermostats:
+        async_add_entities(thermostats)
+        _LOGGER.debug(f'Added thermostats: {thermostats}')
 
 
 class ZontClimateEntity(CoordinatorEntity, ClimateEntity):

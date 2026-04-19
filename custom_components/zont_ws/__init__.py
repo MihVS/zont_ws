@@ -185,6 +185,9 @@ class ZontCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Обновление данных API zont"""
         _LOGGER.info(f'Start polling the controller.')
+        if not self.zont_ws_api.is_connected:
+            raise UpdateFailed(f'Connection to the controller is lost '
+                               f'({self.zont_ws_api.url})')
         try:
             for control_id in self.ids_for_update:
                 await self.zont_ws_api.get_state(control_id)
@@ -197,5 +200,4 @@ class ZontCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f'Connection to the controller is lost ({self.zont_ws_api.url})')
 
 # Убрать полное исключение в дебаг логах
-# Переработать доступность сенсоров во время дисконнекта
 # Добавить кнопку перезагрузки контроллера

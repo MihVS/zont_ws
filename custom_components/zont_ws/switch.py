@@ -24,8 +24,8 @@ async def async_setup_entry(
 
     coordinator: ZontCoordinator = hass.data[DOMAIN][ENTRIES][entry_id]
 
+    switches = []
     for control_id, control_state in coordinator.data.items():
-        switches = []
         if not isinstance(control_state, dict):
             continue
         type_control = control_state.get(WS_KEY_TYPE)
@@ -38,12 +38,12 @@ async def async_setup_entry(
                     switches.append(SwitchZont(
                         coordinator, control_state, unique_id)
                     )
-        for switch in switches:
-            hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
-                switch.unique_id)
-        if switches:
-            async_add_entities(switches)
-            _LOGGER.debug(f'Added buttons: {switches}')
+    for switch in switches:
+        hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
+            switch.unique_id)
+    if switches:
+        async_add_entities(switches)
+        _LOGGER.debug(f'Added buttons: {switches}')
 
 
 class SwitchZont(CoordinatorEntity, SwitchEntity):

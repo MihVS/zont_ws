@@ -32,7 +32,7 @@ class ZontWsApi:
         self._session = async_get_clientsession(hass)
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._lock = asyncio.Lock()
-        self._connected = False
+        self.is_connected = False
         self._listener_task = None
         self._runner_task = None
         self.is_reconnecting = False
@@ -49,7 +49,7 @@ class ZontWsApi:
 
     async def connect(self) -> None:
         """Open websocket and authorize."""
-        if self._connected:
+        if self.is_connected:
             return
 
         _LOGGER.debug(f'Connecting to ZONT WS: {self._host}')
@@ -80,7 +80,7 @@ class ZontWsApi:
                 raise ZontAuthError(f'ZONT authentication failed! '
                                     f'Host: {self._host}')
 
-            self._connected = True
+            self.is_connected = True
             _LOGGER.debug(f'ZONT WS connected and authorized. '
                           f'Host: {self._host}')
 
@@ -105,7 +105,7 @@ class ZontWsApi:
                 await self._listen()
             except Exception as err:
                 _LOGGER.warning(f'WS error: {err}')
-            self._connected = False
+            self.is_connected = False
             if not self.is_reconnecting:
                 _LOGGER.warning(
                     f'Reconnecting in {TIMEOUT_RECONNECT} seconds...'
@@ -135,13 +135,13 @@ class ZontWsApi:
         if self._ws:
             _LOGGER.debug(f'Closing ZONT WS. Host: {self._host}')
             await self._ws.close()
-        self._connected = False
+        self.is_connected = False
         self._ws = None
         _LOGGER.debug(f'WS closed. Host: {self._host}')
 
     async def send_message(self, payload: dict[str, str | int]):
         async with self._lock:
-            if not self._connected:
+            if not self.is_connected:
                 _LOGGER.error(f'WS not connected. Host: {self._host}')
                 raise ZontWsError('WS not connected')
             _LOGGER.debug(f'Host: {self._host}. ZONT WS => {payload}')

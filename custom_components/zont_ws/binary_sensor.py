@@ -30,8 +30,8 @@ async def async_setup_entry(
 
     coordinator: ZontCoordinator = hass.data[DOMAIN][ENTRIES][entry_id]
 
+    binary_sensors = []
     for control_id, control_state in coordinator.data.items():
-        binary_sensors = []
         if not isinstance(control_state, dict):
             continue
         if control_id == WS_KEY_SERVICE_CMD_RESPONSE:
@@ -85,12 +85,12 @@ async def async_setup_entry(
                     binary_sensors.append(ZontBinarySensorAnalog(
                         coordinator, control_state, unique_id)
                     )
-        for binary_sensor in binary_sensors:
-            hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
-                binary_sensor.unique_id)
-        if binary_sensors:
-            async_add_entities(binary_sensors)
-            _LOGGER.debug(f'Added binary sensors: {binary_sensors}')
+    for binary_sensor in binary_sensors:
+        hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
+            binary_sensor.unique_id)
+    if binary_sensors:
+        async_add_entities(binary_sensors)
+        _LOGGER.debug(f'Added binary sensors: {binary_sensors}')
 
 def check_lan(date: str):
     if date:

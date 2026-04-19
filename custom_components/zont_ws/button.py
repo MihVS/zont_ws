@@ -23,8 +23,8 @@ async def async_setup_entry(
 
     coordinator: ZontCoordinator = hass.data[DOMAIN][ENTRIES][entry_id]
 
+    buttons = []
     for control_id, control_state in coordinator.data.items():
-        buttons = []
         if not isinstance(control_state, dict):
             continue
         type_control = control_state.get(WS_KEY_TYPE)
@@ -41,12 +41,12 @@ async def async_setup_entry(
                     buttons.append(ButtonZont(
                         coordinator, control_state, unique_id)
                     )
-        for button in buttons:
-            hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
-                button.unique_id)
-        if buttons:
-            async_add_entities(buttons)
-            _LOGGER.debug(f'Added buttons: {buttons}')
+    for button in buttons:
+        hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
+            button.unique_id)
+    if buttons:
+        async_add_entities(buttons)
+        _LOGGER.debug(f'Added buttons: {buttons}')
 
 
 class ButtonZont(CoordinatorEntity, ButtonEntity):

@@ -28,8 +28,8 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN][ENTRIES][entry_id]
 
+    alarms = []
     for control_id, control_state  in coordinator.data.items():
-        alarms = []
         if not isinstance(control_state, dict):
             continue
         type_control = control_state.get(WS_KEY_TYPE)
@@ -40,12 +40,12 @@ async def async_setup_entry(
                 alarms.append(ZontAlarm(
                     coordinator, control_state, unique_id)
                 )
-        for alarm in alarms:
-            hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
-                alarm.unique_id)
-        if alarms:
-            async_add_entities(alarms)
-            _LOGGER.debug(f'Added alarm control panels: {alarms}')
+    for alarm in alarms:
+        hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
+            alarm.unique_id)
+    if alarms:
+        async_add_entities(alarms)
+        _LOGGER.debug(f'Added alarm control panels: {alarms}')
 
 
 class ZontAlarm(CoordinatorEntity, AlarmControlPanelEntity):
