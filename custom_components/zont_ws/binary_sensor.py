@@ -109,7 +109,21 @@ def check_server(date: str):
     return False
 
 
-class ZontBinarySensor(CoordinatorEntity, BinarySensorEntity):
+class ZontBinarySensorBase(CoordinatorEntity, BinarySensorEntity):
+
+    def __init__(self, coordinator: ZontCoordinator) -> None:
+        super().__init__(coordinator)
+        self._coord: ZontCoordinator = coordinator
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        if not self._coord.zont_ws_api.is_connected:
+            return False
+        return True
+
+
+class ZontBinarySensor(ZontBinarySensorBase):
 
     _ws_key = WS_KEY_STATE
 
@@ -119,7 +133,6 @@ class ZontBinarySensor(CoordinatorEntity, BinarySensorEntity):
                  unique_id: str,
                  prefix: str = '') -> None:
         super().__init__(coordinator)
-        self._coord = coordinator
         self._control_id = control_state.get(WS_KEY_ID)
         self._name = control_state.get(WS_KEY_NAME) + prefix
         self._unique_id = unique_id
@@ -203,7 +216,7 @@ class ZontBinarySensorRadio(ZontBinarySensorExtension):
                 return None
 
 
-class ZontBinarySensorService(CoordinatorEntity, BinarySensorEntity):
+class ZontBinarySensorService(ZontBinarySensorBase):
 
     def __init__(self,
                  coordinator: ZontCoordinator,

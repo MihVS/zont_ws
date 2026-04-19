@@ -52,7 +52,21 @@ async def async_setup_entry(
         _LOGGER.debug(f'Added thermostats: {thermostats}')
 
 
-class ZontClimateEntity(CoordinatorEntity, ClimateEntity):
+class ZontClimateBase(CoordinatorEntity, ClimateEntity):
+
+    def __init__(self, coordinator: ZontCoordinator) -> None:
+        super().__init__(coordinator)
+        self._coord: ZontCoordinator = coordinator
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        if not self._coord.zont_ws_api.is_connected:
+            return False
+        return True
+
+
+class ZontClimateEntity(ZontClimateBase):
     """Базовый класс для климата zont"""
 
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
@@ -70,7 +84,6 @@ class ZontClimateEntity(CoordinatorEntity, ClimateEntity):
                  unique_id: str
     ) -> None:
         super().__init__(coordinator)
-        self._coord = coordinator
         self._control_id = control_id
         self._control_state = coordinator.data.get(control_id)
         self._name = self._control_state.get(WS_KEY_NAME)

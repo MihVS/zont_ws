@@ -204,7 +204,22 @@ def check_voltage(date: str):
     _LOGGER.debug('check_voltage: False')
     return False
 
-class ZontSensor(CoordinatorEntity, SensorEntity):
+
+class ZontSensorBase(CoordinatorEntity, SensorEntity):
+
+    def __init__(self, coordinator: ZontCoordinator) -> None:
+        super().__init__(coordinator)
+        self._coord: ZontCoordinator = coordinator
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        if not self._coord.zont_ws_api.is_connected:
+            return False
+        return True
+
+
+class ZontSensor(ZontSensorBase):
 
     _ws_key = WS_KEY_VALUE
 
@@ -214,10 +229,9 @@ class ZontSensor(CoordinatorEntity, SensorEntity):
                  unique_id: str,
                  prefix: str = '') -> None:
         super().__init__(coordinator)
-        self._coord = coordinator
         self._control_id = control_state.get(WS_KEY_ID)
         self._control_state = control_state
-        self._name = control_state.get(WS_KEY_NAME) + prefix
+        self._name = f'{control_state.get(WS_KEY_NAME)}{prefix}'
         self._unique_id = unique_id
         self._attr_device_info = coordinator.get_devices_info()
 
@@ -436,14 +450,13 @@ class ZontSensorRSSI(ZontSensorMeasurement):
         return value / 2 - 73
 
 
-class ZontSensorService(CoordinatorEntity, SensorEntity):
+class ZontSensorService(ZontSensorBase):
 
     def __init__(self,
                  coordinator: ZontCoordinator,
                  unique_id: str,
                  name: str) -> None:
         super().__init__(coordinator)
-        self._coord = coordinator
         self._name = name
         self._unique_id = unique_id
         self._attr_device_info = coordinator.get_devices_info()

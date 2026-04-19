@@ -48,7 +48,21 @@ async def async_setup_entry(
         _LOGGER.debug(f'Added alarm control panels: {alarms}')
 
 
-class ZontAlarm(CoordinatorEntity, AlarmControlPanelEntity):
+class ZontAlarmBase(CoordinatorEntity, AlarmControlPanelEntity):
+
+    def __init__(self, coordinator: ZontCoordinator) -> None:
+        super().__init__(coordinator)
+        self._coord: ZontCoordinator = coordinator
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        if not self._coord.zont_ws_api.is_connected:
+            return False
+        return True
+
+
+class ZontAlarm(ZontAlarmBase):
 
     _attr_code_format = None
     _attr_code_arm_required = False
@@ -62,7 +76,6 @@ class ZontAlarm(CoordinatorEntity, AlarmControlPanelEntity):
                  control_state: dict,
                  unique_id: str) -> None:
         super().__init__(coordinator)
-        self._coord = coordinator
         self._control_id = control_state.get(WS_KEY_ID)
         self._name = control_state.get(WS_KEY_NAME)
         self._unique_id = unique_id

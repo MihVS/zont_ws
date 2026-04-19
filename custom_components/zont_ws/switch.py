@@ -46,7 +46,21 @@ async def async_setup_entry(
         _LOGGER.debug(f'Added buttons: {switches}')
 
 
-class SwitchZont(CoordinatorEntity, SwitchEntity):
+class ZontSwitchBase(CoordinatorEntity, SwitchEntity):
+
+    def __init__(self, coordinator: ZontCoordinator) -> None:
+        super().__init__(coordinator)
+        self._coord: ZontCoordinator = coordinator
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        if not self._coord.zont_ws_api.is_connected:
+            return False
+        return True
+
+
+class SwitchZont(ZontSwitchBase):
 
     def __init__(self,
                  coordinator: ZontCoordinator,
@@ -54,7 +68,6 @@ class SwitchZont(CoordinatorEntity, SwitchEntity):
                  unique_id: str
     ) -> None:
         super().__init__(coordinator)
-        self._coord = coordinator
         self._control_id = control_state.get(WS_KEY_ID)
         self._name = control_state.get(WS_KEY_NAME)
         self._unique_id = unique_id

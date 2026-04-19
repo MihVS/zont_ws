@@ -49,7 +49,21 @@ async def async_setup_entry(
         _LOGGER.debug(f'Added buttons: {buttons}')
 
 
-class ButtonZont(CoordinatorEntity, ButtonEntity):
+class ZontButtonBase(CoordinatorEntity, ButtonEntity):
+
+    def __init__(self, coordinator: ZontCoordinator) -> None:
+        super().__init__(coordinator)
+        self._coord: ZontCoordinator = coordinator
+
+    @property
+    def available(self) -> bool:
+        """Return True if entity is available."""
+        if not self._coord.zont_ws_api.is_connected:
+            return False
+        return True
+
+
+class ButtonZont(ZontButtonBase):
 
     def __init__(self,
                  coordinator: ZontCoordinator,
