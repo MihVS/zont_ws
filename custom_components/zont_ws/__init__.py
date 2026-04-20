@@ -13,7 +13,7 @@ from .const import (
     DOMAIN, PLATFORMS, MANUFACTURER, ENTRIES, TIME_UPDATE, CONFIGURATION_URL,
     CURRENT_ENTITY_IDS, WS_KEY_TYPE, ZontType, MODE_BOILER_NAMES, WS_KEY_NAME,
     WS_KEY_SERVICE_CMD_RESPONSE, WS_KEY_ID, WS_KEY_CMD_RESPONSE, WS_KEY_IDS,
-    ZontSysCommand, RESP_NO_DATA,
+    ZontSysCommand, RESP_NO_DATA, TIME_UPDATE_DISCONNECT,
 )
 from .core.exceptions import ZontInitError, ZontWsError
 from .core.zont_data import ZontDeviceInfo
@@ -183,11 +183,16 @@ class ZontCoordinator(DataUpdateCoordinator):
             raise ZontInitError
 
     async def _async_update_data(self):
-        """Обновление данных API zont"""
+        """Fetch the latest data from the source."""
         _LOGGER.info(f'Start polling the controller.')
         if not self.zont_ws_api.is_connected:
+            self.update_interval = timedelta(seconds=TIME_UPDATE_DISCONNECT)
             raise UpdateFailed(f'Connection to the controller is lost '
                                f'({self.zont_ws_api.url})')
+        else:
+            self.update_interval = timedelta(seconds=TIME_UPDATE)
+        _LOGGER.debug(f"Coordinator's update time: "
+                      f"{self.update_interval} seconds")
         try:
             for control_id in self.ids_for_update:
                 await self.zont_ws_api.get_state(control_id)
@@ -198,6 +203,3 @@ class ZontCoordinator(DataUpdateCoordinator):
         except ZontWsError:
             _LOGGER.warning(f'Waiting connect to zont ({self.zont_ws_api.url})...')
             raise UpdateFailed(f'Connection to the controller is lost ({self.zont_ws_api.url})')
-
-# Убрать полное исключение в дебаг логах
-# Добавить кнопку перезагрузки контроллера

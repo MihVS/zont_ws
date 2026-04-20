@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from homeassistant.components.button import ButtonEntity
@@ -8,7 +9,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import ZontCoordinator
 from .const import (
     DOMAIN, CURRENT_ENTITY_IDS, ENTRIES, WS_KEY_ID, WS_KEY_TYPE, ZontType,
-    WS_KEY_NAME, COMMAND_ON, HEATING_MODES, WS_KEY_STYPE, ZontWebElmType
+    WS_KEY_NAME, COMMAND_ON, HEATING_MODES, WS_KEY_STYPE, ZontWebElmType,
+    ZontSysCommand, TIME_UPDATE
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,6 +43,9 @@ async def async_setup_entry(
                     buttons.append(ButtonZont(
                         coordinator, control_state, unique_id)
                     )
+    unique_id_reset = f'{entry_id}{coordinator.zont_ws_api.name}-button_reset'
+    buttons.append(ButtonResetZont(coordinator, unique_id_reset))
+
     for button in buttons:
         hass.data[DOMAIN][CURRENT_ENTITY_IDS][entry_id].append(
             button.unique_id)
@@ -51,9 +56,25 @@ async def async_setup_entry(
 
 class ZontButtonBase(CoordinatorEntity, ButtonEntity):
 
-    def __init__(self, coordinator: ZontCoordinator) -> None:
-        super().__init__(coordinator)
+    def __init__(self, coordinator: ZontCoordinator, unique_id: str) -> None:
+        super().__init__(coordinator, unique_id)
         self._coord: ZontCoordinator = coordinator
+        self._name = 'base button'
+        self._unique_id = unique_id
+        self._attr_device_info = coordinator.get_devices_info()
+
+    @property
+    def unique_id(self) -> str:
+        return self._unique_id
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    def __repr__(self) -> str:
+        if not self.hass:
+            return f"<Button entity {self.name}>"
+        return super().__repr__()
 
     @property
     def available(self) -> bool:
@@ -70,25 +91,9 @@ class ButtonZont(ZontButtonBase):
                  control_state: dict,
                  unique_id: str
     ) -> None:
-        super().__init__(coordinator)
-        self._coord = coordinator
+        super().__init__(coordinator, unique_id)
         self._control_id = control_state.get(WS_KEY_ID)
         self._name = control_state.get(WS_KEY_NAME)
-        self._unique_id = unique_id
-        self._attr_device_info = coordinator.get_devices_info()
-
-    @property
-    def unique_id(self) -> str:
-        return self._unique_id
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    def __repr__(self) -> str:
-        if not self.hass:
-            return f"<Button entity {self.name}>"
-        return super().__repr__()
 
     async def async_press(self) -> None:
         """Handle the button press."""
@@ -112,4 +117,32 @@ class HeatingModeButton(ButtonZont):
         for mode, icon in HEATING_MODES.items():
             if mode.lower() in name_mode.lower():
                 return icon
-        return 'mdi:refresh-circle'
+        return 'mdi:refresh'
+
+
+class ButtonResetZont(ZontButtonBase):
+
+    _attr_icon = 'mdi:cog-refresh'
+
+    def __init__(self,
+                 coordinator: ZontCoordinator,
+                 unique_id: str
+    ) -> None:
+        super().__init__(coordinator, unique_id)
+        self._name = 'Reboot ZONT'
+
+    async def async_press(self) -> None:
+        """Handle the button press."""
+        await self._coord.zont_ws_api.send_system_command(
+            ZontSysCommand.RESTART
+        )
+        _LOGGER.info(f'Reboot ZONT: {self._coord.zont_ws_api.name} '
+                     f'{self._coord.zont_ws_api._host}')
+        await asyncio.sleep(1)
+        await self._coord.zont_ws_api.close()
+        await self._coord.async_refresh()
+        for _ in range(TIME_UPDATE):
+            await asyncio.sleep(1)
+            if self._coord.zont_ws_api.is_connected:
+                await self._coord.async_refresh()
+                return

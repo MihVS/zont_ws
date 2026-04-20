@@ -198,7 +198,7 @@ class ZontWsApi:
                 _LOGGER.debug(f'Init data updated by {control_data}')
         return data
 
-    async def get_ids(self, obj_type: str = 255):
+    async def get_ids(self, obj_type: int = 255):
         """Request list of object IDs."""
         await self.send_message({WS_KEY_REQUEST_IDS: obj_type})
 
